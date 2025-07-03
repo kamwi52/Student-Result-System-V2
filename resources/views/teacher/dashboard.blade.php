@@ -15,12 +15,18 @@
                             @foreach($classes as $class)
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                     {{-- Display the Subject name and the Class name --}}
-                                    {{ $class->subject->name }} - {{ $class->name }}
+                                    <div>
+                                        <strong>{{ $class->subject->name }} - {{ $class->name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ $class->students->count() }} Students
+                                        </small>
+                                    </div>
 
                                     {{-- ============================================= --}}
-                                    {{--  THIS IS THE UPDATED LINK                  --}}
+                                    {{--  THIS IS THE CORRECTED LINK                --}}
                                     {{-- ============================================= --}}
-                                    <a href="{{ route('teacher.gradebook.index', $class->id) }}" class="btn btn-primary btn-sm">Manage Grades</a>
+                                    <a href="{{ route('teacher.gradebook.edit', $class->id) }}" class="btn btn-primary btn-sm">Manage Grades</a>
                                 </li>
                             @endforeach
                         </ul>

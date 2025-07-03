@@ -5,6 +5,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\AcademicSession;
 use Illuminate\Http\Request;
+// Add these at the top with your other 'use' statements
+use App\Imports\AssessmentsImport;
+use Maatwebsite\Excel\Facades\Excel;
+
 
 class AssessmentController extends Controller
 {
@@ -49,4 +53,32 @@ class AssessmentController extends Controller
         $assessment->delete();
         return redirect()->route('admin.assessments.index')->with('success', 'Assessment deleted successfully.');
     }
+    // Inside the AssessmentController class
+
+// ... your existing index(), create(), store(), etc. methods ...
+
+/**
+ * Handle the import of assessments from a spreadsheet.
+ */
+public function import(Request $request)
+{
+    // 1. Validate the uploaded file
+    $request->validate([
+        'import_file' => 'required|mimes:csv,xlsx'
+    ]);
+
+    // 2. Find the current academic session
+    // Get the most recently created academic session as the "current" one.
+$currentSession = AcademicSession::latest()->firstOrFail();
+
+    // 3. Get the uploaded file
+    $file = $request->file('import_file');
+
+    // 4. Process the file using our Import class
+    // We pass the current session ID to the constructor
+    Excel::import(new AssessmentsImport($currentSession->id), $file);
+
+    // 5. Redirect back with a success message
+    return redirect()->route('admin.assessments.index')->with('success', 'Assessments have been imported successfully!');
+}
 }

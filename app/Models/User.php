@@ -6,27 +6,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+// IMPORTANT: This 'use' statement is now added
+use App\Models\ClassSection;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'role', // CORRECTED: 'role' is now included
     ];
 
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -45,21 +50,26 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-    // In User.php
-public function courses()
+
+    /**
+     * CORRECTED & CLEANED UP: Get the classes taught by this user (if they are a teacher).
+     * This is the relationship used by the Teacher's Dashboard.
+     */
+    public function taughtClasses(): HasMany
 {
-    return $this->belongsToMany(\App\Models\Course::class);
+    // CORRECTED: This now correctly looks for the 'user_id' column
+    // which is the actual foreign key in your 'classes' table.
+    return $this->hasMany(ClassSection::class, 'user_id');
 }
-// Add this method to the User model
-public function taughtCourses()
-{
-    return $this->hasMany(Course::class);
-}
-public function taughtClasses()
-{
-    // The foreign key on the 'classes' table is 'user_id'
-    // This tells Laravel that this User has many ClassSections.
-    return $this->hasMany(\App\Models\ClassSection::class, 'user_id');
-}
-public function enrolledClasses() { return $this->belongsToMany(\App\Models\ClassSection::class, 'class_student', 'user_id', 'class_id'); }
+    /**
+     * Get the classes this user is enrolled in (if they are a student).
+     * The pivot table 'class_student' connects a User to a ClassSection.
+     */
+    public function enrolledClasses(): BelongsToMany
+    {
+        // NOTE: Make sure the keys 'user_id' and 'class_id' match your pivot table columns.
+        return $this->belongsToMany(ClassSection::class, 'class_student', 'user_id', 'class_id');
+    }
+
+    // REMOVED: The old 'courses' and 'taughtCourses' methods have been removed to avoid confusion.
 }

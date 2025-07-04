@@ -3,76 +3,79 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClassSection;
 use App\Models\Assessment;
 use App\Models\Result;
+use App\Models\SchoolClass;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; // <-- Import DB Facade for transactions
+use Illuminate\View\View;
 
 class GradebookController extends Controller
 {
     /**
-     * Show the form for editing grades for a specific class.
-     * Renamed from index() to edit() for Laravel convention.
+     * Shows the form for editing the grades for a specific class.
      */
-    public function edit(ClassSection $class) // <-- Route Model Binding injects the class
+    public function edit(SchoolClass $class): View
     {
-        // 1. AUTHORIZATION: Use the policy to check permissions.
-        $this->authorize('view', $class);
-
-        // 2. EFFICIENT DATA LOADING: Use eager loading.
-        $class->load(['students' => fn($query) => $query->orderBy('name'), 'academicSession']);
-        $assessments = Assessment::where('academic_session_id', $class->academic_session_id)->get();
-
-        // Your clever keyBy logic is perfect, let's keep it.
-        $results = Result::where('class_section_id', $class->id)
+        $class->load('students');
+        $students = $class->students()->orderBy('name')->get();
+        $assessments = Assessment::orderBy('name')->get();
+        $grades = Result::where('school_class_id', $class->id)
             ->get()
-            ->keyBy(fn($item) => $item->user_id . '-' . $item->assessment_id);
+            ->keyBy(function ($item) {
+                return $item['student_id'] . '-' . $item['assessment_id'];
+            })
+            ->map(function ($item) {
+                return $item['score'];
+            });
 
-        // Renamed view to 'edit' to match the method name.
-        return view('teacher.gradebook.edit', compact('class', 'assessments', 'results'));
+        return view('teacher.gradebook.edit', [
+            'class'       => $class,
+            'students'    => $students,
+            'assessments' => $assessments,
+            'grades'      => $grades,
+        ]);
     }
 
-    /**
-     * Store or update the grades for a specific class.
-     */
-    public function store(Request $request, ClassSection $class) // <-- Route Model Binding here too!
-    {
-        // 1. AUTHORIZATION: Ensure the teacher is authorized to update this specific class.
-        $this->authorize('view', $class); // We can reuse the 'view' permission for now.
 
-        // 2. VALIDATION: No need to validate class_section_id, it's from the URL.
+    /**
+     * Store or update the grades for the specified class.
+     * This is the "Big Boss" method that does the heavy lifting.
+     */
+    public function store(Request $request, SchoolClass $class): RedirectResponse
+    {
+        // 1. VALIDATION: Ensure the data is in the correct format.
         $request->validate([
-            'results' => 'present|array', // Ensures 'results' exists, even if empty
-            'results.*.*' => 'nullable|numeric|min:0|max:100' // Validates every single score
+            'grades' => ['required', 'array'],
+            // Ensure every grade submitted is for a real student and a real assessment
+            'grades.*.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
-        // 3. DATABASE LOGIC: Wrap in a transaction for safety.
-        DB::transaction(function () use ($request, $class) {
-            foreach ($request->results as $student_id => $assessments) {
-                foreach ($assessments as $assessment_id => $marks) {
-                    if ($marks !== null && $marks !== '') {
-                        Result::updateOrCreate(
-                            [
-                                'user_id' => $student_id,
-                                'class_section_id' => $class->id, // Use the ID from the model
-                                'assessment_id' => $assessment_id,
-                            ],
-                            [
-                                'marks_obtained' => $marks,
-                            ]
-                        );
-                    } else {
-                        // Optional: If a score is cleared, delete the result from the DB.
-                        Result::where('user_id', $student_id)
-                              ->where('class_section_id', $class->id)
-                              ->where('assessment_id', $assessment_id)
-                              ->delete();
-                    }
-                }
-            }
-        });
 
-        return redirect()->back()->with('success', 'Grades saved successfully!');
+        // 2. LOOP AND SAVE: Iterate through every grade submitted from the form.
+        foreach ($request->grades as $studentId => $assessments) {
+            foreach ($assessments as $assessmentId => $score) {
+                // Use updateOrCreate to be efficient.
+                // It will CREATE a new record if one doesn't exist,
+                // or UPDATE the existing one if it does.
+                Result::updateOrCreate(
+                    [
+                        // The unique keys to find the record
+                        'student_id'        => $studentId,
+                        'school_class_id'   => $class->id,
+                        'assessment_id'     => $assessmentId,
+                    ],
+                    [
+                        // The value to save. Use null if the input box was empty.
+                        'score' => empty($score) ? null : $score,
+                    ]
+                );
+            }
+        }
+
+        // 3. REDIRECT WITH SUCCESS: Send the teacher back to their dashboard.
+        // The 'with' method flashes a success message to the session.
+        return redirect()->route('teacher.dashboard')
+                         ->with('success', 'Grades for ' . $class->name . ' have been saved successfully!');
     }
 }

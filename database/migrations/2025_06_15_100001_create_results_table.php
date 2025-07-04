@@ -6,24 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+        
     public function up(): void
     {
         Schema::create('results', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('class_section_id')->constrained('classes')->onDelete('cascade');
+
+            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
             
-            // ADD THIS LINE BACK IN
+            // This is the fix! We tell it to reference the 'classes' table that actually exists.
+            $table->foreignId('school_class_id')->constrained('classes')->onDelete('cascade');
+            
             $table->foreignId('assessment_id')->constrained('assessments')->onDelete('cascade');
-            
-            $table->integer('marks_obtained');
+            $table->decimal('score', 5, 2)->nullable();
             $table->timestamps();
 
-            // UPDATE THE UNIQUE KEY TO INCLUDE THE ASSESSMENT ID
-            $table->unique(['user_id', 'class_section_id', 'assessment_id']);
+            // The unique key to prevent duplicate entries
+            $table->unique(['student_id', 'school_class_id', 'assessment_id'], 'student_class_assessment_unique');
         });
     }
-
     public function down(): void
     {
         Schema::dropIfExists('results');

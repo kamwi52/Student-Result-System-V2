@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Imports\UsersImport; // <-- ADD THIS LINE
+use App\Imports\UsersImport;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
-use Maatwebsite\Excel\Facades\Excel; // <-- AND THIS LINE
+use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
@@ -27,6 +27,19 @@ class UserController extends Controller
      */
     public function create(): View
     {
+        // Define the roles to pass to the create view as well (optional, but good practice if create also uses roles)
+        // In your provided create view, roles were not a dropdown, so it might not be strictly needed there yet.
+        // If you add a role dropdown to the create form later, uncomment these lines:
+        /*
+        $roles = [
+            'admin' => 'Admin',
+            'teacher' => 'Teacher',
+            'student' => 'Student',
+        ];
+        return view('admin.users.create', compact('roles'));
+        */
+
+        // Keeping the original return for create based on your provided view
         return view('admin.users.create');
     }
 
@@ -57,7 +70,15 @@ class UserController extends Controller
      */
     public function edit(User $user): View
     {
-        return view('admin.users.edit', compact('user'));
+        // === MODIFIED: Define the roles array and pass it to the view ===
+        $roles = [
+            'admin' => 'Admin',
+            'teacher' => 'Teacher',
+            'student' => 'Student',
+        ];
+
+        return view('admin.users.edit', compact('user', 'roles')); // Pass both 'user' and 'roles'
+        // ================================================================
     }
 
     /**

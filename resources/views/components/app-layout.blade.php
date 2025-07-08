@@ -14,12 +14,11 @@
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="font-sans antialiased"> {{-- Added some basic Tailwind body classes --}}
+<body class="font-sans antialiased">
+
     {{-- This is where the content wrapped by <x-app-layout> will be rendered --}}
     {{-- The default slot variable is $slot --}}
     {{-- The named slot for the header is $header --}}
-
-    {{-- We are combining the main layout structure and the component slot rendering here --}}
     {{-- This structure is based on typical Breeze app-layout component --}}
 
     <div class="min-h-screen bg-gray-100"> {{-- Main background and height --}}
@@ -44,15 +43,16 @@
 
     {{-- The original <div id="app"> and <main class="py-4"> with @yield('content') are now
          replaced by the structure above that uses $slot and $header.
-         Remove the old structure below:
+         Ensure this old structure is NOT in your file:
     --}}
-    {{-- <div id="app">
+    {{--
+    <div id="app">
         @include('layouts.navigation')
-
         <main class="py-4">
             @yield('content')
         </main>
-    </div> --}}
+    </div>
+    --}}
 
 </body>
 </html>

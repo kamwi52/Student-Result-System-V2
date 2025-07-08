@@ -5,4 +5,20 @@
 @import 'variables';
 
 // Bootstrap
+// Define custom color variables to override Bootstrap defaults if needed
+// For example: $primary: #900;
+
+// Import Bootstrap functions and variables
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+
+// This is the magic part. We are creating a map of color names to their values.
+$custom-colors: (
+  "purple": #6f42c1
+);
+
+// Merge our custom colors with Bootstrap's default theme colors
+$theme-colors: map-merge($theme-colors, $custom-colors);
+
+// Import the rest of Bootstrap
 @import 'bootstrap/scss/bootstrap';

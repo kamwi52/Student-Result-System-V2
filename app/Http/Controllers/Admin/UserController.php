@@ -3,29 +3,31 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Imports\UsersImport; // <-- ADD THIS LINE
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel; // <-- AND THIS LINE
 
 class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-   // In UserController.php
-public function index()
-{
-    // We can fetch all users, maybe the ones that aren't admins,
-    // or all of them. Let's get all for now.
-    $users = \App\Models\User::latest()->paginate(10);
+    public function index(): View
+    {
+        $users = User::latest()->paginate(10);
+        return view('admin.users.index', compact('users'));
+    }
 
-    return view('admin.users.index', compact('users'));
-}
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(): View
     {
-        //
+        return view('admin.users.create');
     }
 
     /**
@@ -33,51 +35,90 @@ public function index()
      */
     public function store(Request $request)
     {
-        //
-    }
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role' => ['required', 'in:admin,teacher,student'],
+        ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(User $user)
-    {
-        //
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+        ]);
+
+        return to_route('admin.users.index')->with('success', 'User created successfully.');
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-   public function edit(\App\Models\User $user) // Added full namespace for clarity
-{
-    // Laravel automatically finds the user by their ID from the URL
-    return view('admin.users.edit', compact('user'));
-}
+    public function edit(User $user): View
+    {
+        return view('admin.users.edit', compact('user'));
+    }
 
     /**
      * Update the specified resource in storage.
      */
-    // in UserController.php
+    public function update(Request $request, User $user)
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'role' => ['required', 'in:admin,teacher,student'],
+            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+        ]);
 
-public function update(\Illuminate\Http\Request $request, \App\Models\User $user)
-{
-    // Validate the incoming role
-    $request->validate([
-        'role' => 'required|in:admin,teacher,student', // Must be one of these three values
-    ]);
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->role = $request->role;
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+        $user->save();
 
-    // Update the user's role
-    $user->role = $request->role;
-    $user->save();
-
-    // THIS IS THE CORRECTED LINE
-return redirect()->route('admin.users.index')->with('success', 'User role updated successfully!');
-}
+        return to_route('admin.users.index')->with('success', 'User updated successfully.');
+    }
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(User $user)
     {
-        //
+        if ($user->id === 1 || $user->id === auth()->id()) {
+            return back()->with('error', 'You cannot delete this user.');
+        }
+
+        $user->delete();
+        return to_route('admin.users.index')->with('success', 'User deleted successfully.');
+    }
+
+    // =======================================================
+    // == ADDED METHODS FOR BULK USER IMPORT
+    // =======================================================
+
+    /**
+     * Show the form for importing users.
+     */
+    public function showImportForm(): View
+    {
+        return view('admin.users.import');
+    }
+
+    /**
+     * Handle the import of users from a spreadsheet.
+     */
+    public function handleImport(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv,xls',
+        ]);
+
+        Excel::import(new UsersImport, $request->file('file'));
+
+        return to_route('admin.users.index')->with('success', 'Users imported successfully.');
     }
 }

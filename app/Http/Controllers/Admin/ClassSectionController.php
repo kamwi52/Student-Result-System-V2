@@ -3,70 +3,85 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicSession;
 use App\Models\ClassSection;
 use App\Models\Subject;
 use App\Models\User;
-use App\Models\AcademicSession;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ClassSectionController extends Controller
 {
-    public function index()
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(): View
     {
-        $class_sections = ClassSection::with(['subject', 'teacher', 'academicSession'])->latest()->paginate(10);
-        return view('admin.classes.index', compact('class_sections'));
+        // === THIS IS THE CORRECTED SECTION ===
+        $classes = ClassSection::with(['subject', 'teacher', 'academicSession'])->latest()->paginate(10);
+        // The variable is now named '$classes' to match the view
+        return view('admin.classes.index', compact('classes'));
+        // =====================================
     }
 
-    public function create()
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create(): View
     {
         $subjects = Subject::orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->orderBy('name')->get();
-        $academic_sessions = AcademicSession::orderBy('name', 'desc')->get();
-        return view('admin.classes.create', compact('subjects', 'teachers', 'academic_sessions'));
+        $academicSessions = AcademicSession::orderBy('name')->get();
+        return view('admin.classes.create', compact('subjects', 'teachers', 'academicSessions'));
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
             'subject_id' => 'required|exists:subjects,id',
-            'user_id' => 'required|exists:users,id',
+            'teacher_id' => 'required|exists:users,id',
             'academic_session_id' => 'required|exists:academic_sessions,id',
         ]);
-        ClassSection::create($validated);
-        return redirect()->route('admin.classes.index')->with('success', 'Class created successfully.');
+        ClassSection::create($request->all());
+        return to_route('admin.classes.index')->with('success', 'Class created successfully.');
     }
 
-    public function show(ClassSection $class)
-    {
-        //
-    }
-
-    public function edit(ClassSection $class)
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(ClassSection $class): View
     {
         $subjects = Subject::orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->orderBy('name')->get();
-        $academic_sessions = AcademicSession::orderBy('name', 'desc')->get();
-        return view('admin.classes.edit', compact('class', 'subjects', 'teachers', 'academic_sessions'));
+        $academicSessions = AcademicSession::orderBy('name')->get();
+        return view('admin.classes.edit', compact('class', 'subjects', 'teachers', 'academicSessions'));
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, ClassSection $class)
     {
-        $validated = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
             'subject_id' => 'required|exists:subjects,id',
-            'user_id' => 'required|exists:users,id',
+            'teacher_id' => 'required|exists:users,id',
             'academic_session_id' => 'required|exists:academic_sessions,id',
         ]);
-        $class->update($validated);
-        // Corrected the redirect route here
-        return redirect()->route('admin.classes.index')->with('success', 'Class updated successfully.');
+        $class->update($request->all());
+        return to_route('admin.classes.index')->with('success', 'Class updated successfully.');
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy(ClassSection $class)
     {
         $class->delete();
-        // Corrected the redirect route here
-        return redirect()->route('admin.classes.index')->with('success', 'Class deleted successfully.');
+        return to_route('admin.classes.index')->with('success', 'Class deleted successfully.');
     }
 }

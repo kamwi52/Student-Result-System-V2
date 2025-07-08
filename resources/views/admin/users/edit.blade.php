@@ -5,36 +5,41 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card">
-                <div class="card-header">Edit User: {{ $user->name }}</div>
-
+                <div class="card-header">{{ __('Edit User') }}: {{ $user->name }}</div>
                 <div class="card-body">
-                    {{-- Corrected the form's action route --}}
-                    <form method="POST" action="{{ route('admin.users.update', $user->id) }}">
-                        @method('PUT')
+                    <form method="POST" action="{{ route('admin.users.update', $user) }}">
                         @csrf
-
-                        <div class="form-group mb-3">
-                            <label for="name">Name</label>
-                            <input type="text" class="form-control" id="name" value="{{ $user->name }}" readonly>
+                        @method('PUT')
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ $user->name }}" required>
                         </div>
-
-                        <div class="form-group mb-3">
-                            <label for="email">Email</label>
-                            <input type="email" class="form-control" id="email" value="{{ $user->email }}" readonly>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ $user->email }}" required>
                         </div>
-
-                        <div class="form-group mb-3">
-                            <label for="role">Role</label>
-                            <select name="role" id="role" class="form-control">
-                                <option value="admin" @if($user->role == 'admin') selected @endif>Admin</option>
-                                <option value="teacher" @if($user->role == 'teacher') selected @endif>Teacher</option>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role">
                                 <option value="student" @if($user->role == 'student') selected @endif>Student</option>
+                                <option value="teacher" @if($user->role == 'teacher') selected @endif>Teacher</option>
+                                <option value="admin" @if($user->role == 'admin') selected @endif>Admin</option>
                             </select>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">Update Role</button>
-                        {{-- Corrected the "Cancel" button's route --}}
-                        <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Cancel</a>
+                        <hr>
+                        <p class="text-muted">Leave password fields blank to keep the current password.</p>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="password" name="password">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_confirmation" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="password_confirmation" name="password_confirmation">
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <a href="{{ route('admin.users.index') }}" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Update User</button>
+                        </div>
                     </form>
                 </div>
             </div>

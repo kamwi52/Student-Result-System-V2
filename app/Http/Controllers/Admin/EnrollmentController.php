@@ -3,53 +3,75 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\ClassSection;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+// We will create these files next
+// use App\Events\StudentsEnrolled;
+// use App\Exports\EnrolledStudentsExport;
+// use Maatwebsite\Excel\Facades\Excel;
 
 class EnrollmentController extends Controller
 {
     /**
-     * Display the enrollment management page.
-     */
-    public function index(Request $request)
+     * We will implement this authorization later. For now, we use the 'is.admin' middleware.
+    public function __construct()
     {
-        $classes = ClassSection::with(['subject', 'teacher'])->get();
-        $students = User::where('role', 'student')->orderBy('name', 'asc')->get();
+        $this->middleware('can:manage-enrollments');
+    }
+    */
 
-        $selectedClass = null;
-        $enrolledStudentIds = [];
+    /**
+     * Display paginated, searchable student enrollment interface
+     */
+    public function index(ClassSection $classSection)
+    {
+        $allStudents = User::where('role', 'student')
+            ->when(request('search'), function ($query) {
+                $query->where(function($q) {
+                    $q->where('name', 'like', '%'.request('search').'%')
+                      ->orWhere('email', 'like', '%'.request('search').'%');
+                });
+            })
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
 
-        if ($request->has('class_id') && $request->class_id != '') {
-            $selectedClass = ClassSection::with('students')->find($request->class_id);
-            if ($selectedClass) {
-                $enrolledStudentIds = $selectedClass->students->pluck('id')->toArray();
-            }
-        }
+        $enrolledStudentIds = $classSection->students()
+            ->pluck('id')
+            ->toArray();
 
-        return view('admin.enrollments.index', compact('classes', 'students', 'selectedClass', 'enrolledStudentIds'));
+        return view('admin.enrollments.index', [
+            'classSection' => $classSection->loadCount('students'),
+            'allStudents' => $allStudents,
+            'enrolledStudentIds' => $enrolledStudentIds,
+            'searchTerm' => request('search')
+        ]);
     }
 
     /**
-     * Store the updated enrollment information.
+     * Process enrollment updates with transaction safety
      */
-    public function store(Request $request)
+    public function store(Request $request, ClassSection $classSection)
     {
-        $request->validate([
-            'class_id' => 'required|exists:classes,id',
-            'student_ids' => 'sometimes|array'
+        $validated = $request->validate([
+            'student_ids' => 'sometimes|array',
+            'student_ids.*' => 'exists:users,id' // Removed role check for simplicity for now
         ]);
 
-        $class = ClassSection::findOrFail($request->class_id);
+        DB::transaction(function () use ($classSection, $validated) {
+            // The sync method is simpler and sufficient for now
+            $classSection->students()->sync($validated['student_ids'] ?? []);
 
-        $studentIds = $request->input('student_ids', []);
+            // Event firing can be added later
+            // if (!empty($changes['attached']) || !empty($changes['detached'])) {
+            //     event(new StudentsEnrolled($classSection, $changes));
+            // }
+        });
 
-        $class->students()->sync($studentIds);
-
-        // ====================================================
-        // THIS IS THE CORRECTED REDIRECT
-        // ====================================================
-        return redirect()->route('admin.enrollments.index', ['class_id' => $class->id])
-                         ->with('success', 'Enrollments updated successfully!');
+        return redirect()
+            ->route('admin.classes.index')
+            ->with('success', "Enrollments for {$classSection->name} have been successfully updated.");
     }
 }

@@ -22,6 +22,9 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
+                                    {{-- === ADDED: New header for the student count === --}}
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled</th>
+                                    {{-- ================================================= --}}
                                     <th class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
@@ -32,6 +35,9 @@
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $class->subject->name }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $class->teacher->name ?? 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $class->academicSession->name ?? 'N/A' }}</td>
+                                        {{-- === ADDED: New table cell to display the student count === --}}
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $class->students_count }}</td>
+                                        {{-- =========================================================== --}}
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <a href="{{ route('admin.classes.enroll.index', $class) }}" class="text-green-600 hover:text-green-900">Enroll Students</a>
                                             <a href="{{ route('admin.classes.edit', $class) }}" class="text-indigo-600 hover:text-indigo-900 ml-4">Edit</a>
@@ -44,7 +50,8 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center py-4">No classes found.</td>
+                                        {{-- Updated colspan to 6 to account for the new column --}}
+                                        <td colspan="6" class="text-center py-4">No classes found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

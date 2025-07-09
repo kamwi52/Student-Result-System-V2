@@ -15,14 +15,18 @@ class ClassSectionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
-    {
-        // === THIS IS THE CORRECTED SECTION ===
-        $classes = ClassSection::with(['subject', 'teacher', 'academicSession'])->latest()->paginate(10);
-        // The variable is now named '$classes' to match the view
-        return view('admin.classes.index', compact('classes'));
-        // =====================================
-    }
+   // In app/Http/Controllers/Admin/ClassSectionController.php
+
+public function index(): View
+{
+    // === MODIFIED: Added withCount('students') to the query ===
+    $classes = ClassSection::with(['subject', 'teacher', 'academicSession'])
+        ->withCount('students') // <-- THIS IS THE NEW LINE
+        ->latest()
+        ->paginate(10);
+
+    return view('admin.classes.index', compact('classes'));
+}
 
     /**
      * Show the form for creating a new resource.

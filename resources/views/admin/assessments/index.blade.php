@@ -1,81 +1,69 @@
-@extends('layouts.app')
-@section('content')
-<div class="container">
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Manage Assessments</h5>
-            <a href="{{ route('admin.assessments.create') }}" class="btn btn-primary btn-sm">Add New Assessment</a>
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Assessment Management') }}
+            </h2>
+            <a href="{{ route('admin.assessments.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                Create Assessment
+            </a>
         </div>
-        <div class="card-body">
-            @if(session('success'))
-                <div class="alert alert-success" role="alert">{{ session('success') }}</div>
-            @endif
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Academic Session</th>
-                        <th>Max Marks</th>
-                        <th>Weightage</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
+    </x-slot>
 
-                <!-- resources/views/admin/assessments/index.blade.php -->
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
 
-{{-- Add this section to your existing index view --}}
-<div class="mb-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="p-6 bg-white border-b border-gray-200">
-        <h3 class="text-lg font-semibold mb-4">Import Assessments</h3>
-        <p class="text-sm text-gray-600 mb-4">
-            Upload a CSV or Excel file to bulk-create assessments for the <strong>current academic session</strong>.
-            The file must contain columns named 'name' and 'total_marks'.
-        </p>
-        
-        <!-- IMPORTANT: The form needs this enctype to handle file uploads -->
-        <form action="{{ route('admin.assessments.import') }}" method="POST" enctype="multipart/form-data">
-            @csrf
-            <div class="flex items-center space-x-4">
-                <input type="file" name="import_file" required class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none">
-                
-                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
-                    Import File
-                </button>
+                    {{-- Display Success Messages --}}
+                    @if(session('success'))
+                        <div class="mb-4 p-4 bg-green-100 border border-green-200 text-green-700 rounded-md">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                             <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Max Marks</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Weightage (%)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
+                                    <th class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @forelse ($assessments as $assessment)
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->name }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->max_marks }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->weightage }}%</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->academicSession->name ?? 'N/A' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <a href="{{ route('admin.assessments.edit', $assessment) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
+                                            <form action="{{ route('admin.assessments.destroy', $assessment) }}" method="POST" class="inline-block ml-4" onsubmit="return confirm('Are you sure?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4">No assessments found.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Pagination links --}}
+                    <div class="mt-4">
+                        {{ $assessments->links() }}
+                    </div>
+                </div>
             </div>
-            @error('import_file')
-                <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
-            @enderror
-        </form>
-    </div>
-</div>
-{{-- Your existing table of assessments would go here --}}
-
-
-                <tbody>
-                    @forelse ($assessments as $assessment)
-                        <tr>
-                            <td>{{ $assessment->name }}</td>
-                            <td>{{ $assessment->academicSession->name }}</td>
-                            <td>{{ $assessment->max_marks }}</td>
-                            <td>{{ $assessment->weightage * 100 }}%</td>
-                            <td>
-                                <a href="{{ route('admin.assessments.edit', $assessment->id) }}" class="btn btn-secondary btn-sm">Edit</a>
-                                <form action="{{ route('admin.assessments.destroy', $assessment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="text-center">No assessments found. Please add one.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            {{ $assessments->links() }}
         </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

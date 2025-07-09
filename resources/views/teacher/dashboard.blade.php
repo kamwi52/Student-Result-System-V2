@@ -1,57 +1,66 @@
-@extends('layouts.app')
+{{--
+|--------------------------------------------------------------------------
+| Teacher Dashboard View
+|--------------------------------------------------------------------------
+|
+| This view serves as the main landing page for users with the 'teacher' role.
+| It displays a list of classes assigned to the currently logged-in teacher.
+|
+--}}
 
-@section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-12">
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Teacher Dashboard') }}
+        </h2>
+    </x-slot>
 
-            {{-- SUCCESS MESSAGE ALERT --}}
-            @if (session('success'))
-                <div class="alert alert-success" role="alert">
-                    {{ session('success') }}
-                </div>
-            @endif
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Your Assigned Classes</h3>
 
-            <!-- Welcome Header -->
-            <div class="card mb-4">
-                <div class="card-header">{{ __('Teacher Dashboard') }}</div>
-                <div class="card-body">
-                    <h3 class="h4">Welcome, {{ Auth::user()->name }}!</h3>
-                    <p class="text-muted">
-                        You are assigned to <strong>{{ $stats['total_classes'] }}</strong> classes with a total of <strong>{{ $stats['total_students'] }}</strong> students this session.
-                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                             <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled Students</th>
+                                    <th class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @forelse ($classes as $class)
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $class->name }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $class->subject->name ?? 'N/A' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $class->academicSession->name ?? 'N/A' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $class->students_count }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            {{-- === EDITED: This link now points to the correct grade entry route === --}}
+                                            <a href="{{ route('teacher.grades.enter', $class) }}" class="text-indigo-600 hover:text-indigo-900">Enter Grades</a>
+                                            {{-- =================================================================== --}}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4">You are not currently assigned to any classes.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Pagination links --}}
+                    <div class="mt-4">
+                        {{ $classes->links() }}
+                    </div>
+
                 </div>
             </div>
-
-            <!-- Class List -->
-            <div class="card">
-                <div class="card-header">{{ __('Your Assigned Classes') }}</div>
-                <div class="card-body">
-                    @forelse ($classes as $class)
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-3">
-                            <div>
-                                <h5 class="mb-1 fw-bold text-primary">{{ $class->name }}</h5>
-                                <small class="text-muted">{{ $class->subject->name }} · {{ $class->academicSession->name }}</small>
-                                <div class="mt-2">
-                                    <span class="badge bg-secondary">Students: {{ $class->students_count }}</span>
-                                </div>
-                            </div>
-                            <div>
-                                {{-- We use the corrected route name from our plan --}}
-                                <a href="{{ route('teacher.grades.create', $class) }}" class="btn btn-primary">
-                                    Enter Grades
-                                </a>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="alert alert-info text-center">
-                            You do not have any classes assigned for the current academic session.
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-
         </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

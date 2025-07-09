@@ -1,68 +1,74 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Edit Class') }}: {{ $class->name ?? 'N/A' }} {{-- Use $class->name if available --}}
+            {{ __('Edit Class') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-md mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
+                <div class="p-6 bg-white border-b border-gray-200">
+                    <x-validation-errors class="mb-4" />
 
-                    {{-- Use PUT method for updates --}}
-                    <form method="POST" action="{{ route('admin.classes.update', $class) }}">
+                    <form method="POST" action="{{ route('admin.classes.update', $class->id) }}">
                         @csrf
                         @method('PUT')
 
-                        <!-- Class Name (Adjust field name based on your Class model) -->
+                        {{-- Name Field --}}
                         <div>
-                            <x-input-label for="name" :value="__('Class Name')" />
-                            {{-- Pre-fill with existing data. Adjust field name if necessary (e.g., $class->course_name) --}}
-                            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name', $class->name ?? '')" required autofocus />
-                            <x-input-error :messages="$errors->get('name')" class="mt-2" />
+                            <x-label for="name" value="{{ __('Name') }}" />
+                            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name', $class->name)" required autofocus />
                         </div>
 
-                        {{--
-                        // Example: If Class has a foreign key to Subject and Teacher
-                        <div class="mt-4">
-                            <x-input-label for="subject_id" :value="__('Subject')" />
-                            <select id="subject_id" name="subject_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                <option value="">Select Subject</option>
-                                // Loop through subjects provided by the controller
-                                @foreach($subjects as $subject)
-                                    <option value="{{ $subject->id }}" {{ old('subject_id', $class->subject_id) == $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('subject_id')" class="mt-2" />
-                        </div>
-
+                        {{-- Subject Dropdown --}}
                          <div class="mt-4">
-                            <x-input-label for="teacher_id" :value="__('Teacher')" />
-                            <select id="teacher_id" name="teacher_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                <option value="">Select Teacher</option>
-                                // Loop through teachers provided by the controller (e.g., users with 'teacher' role)
-                                @foreach($teachers as $teacher)
-                                    <option value="{{ $teacher->id }}" {{ old('teacher_id', $class->teacher_id) == $teacher->id ? 'selected' : '' }}>{{ $teacher->name }}</option>
+                            <x-label for="subject_id" value="{{ __('Subject') }}" />
+                            <select name="subject_id" id="subject_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">Select Subject</option>
+                                @foreach($subjects as $subject)
+                                    <option value="{{ $subject->id }}" @if(old('subject_id', $class->subject_id) == $subject->id) selected @endif>{{ $subject->name }}</option>
                                 @endforeach
                             </select>
-                            <x-input-error :messages="$errors->get('teacher_id')" class="mt-2" />
                         </div>
-                        --}}
+
+                        {{-- Teacher Dropdown --}}
+                         <div class="mt-4">
+                            <x-label for="teacher_id" value="{{ __('Teacher') }}" />
+                            <select name="teacher_id" id="teacher_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">Select Teacher</option>
+                                @foreach($teachers as $teacher)
+                                    <option value="{{ $teacher->id }}" @if(old('teacher_id', $class->teacher_id) == $teacher->id) selected @endif>{{ $teacher->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                         {{-- Academic Session Dropdown --}}
+                         <div class="mt-4">
+                            <x-label for="academic_session_id" value="{{ __('Academic Session') }}" />
+                            <select name="academic_session_id" id="academic_session_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">Select Session</option>
+                                @foreach($academicSessions as $session)
+                                    <option value="{{ $session->id }}" @if(old('academic_session_id', $class->academic_session_id) == $session->id) selected @endif>{{ $session->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
 
 
                         <div class="flex items-center justify-end mt-4">
-                            {{-- Add a Cancel/Back button --}}
-                             <x-secondary-button href="{{ route('admin.classes.index') }}" class="ms-0">
+                            {{-- Standard anchor tag for Cancel button --}}
+                            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('admin.classes.index') }}">
                                 {{ __('Cancel') }}
-                            </x-secondary-button>
+                            </a>
 
+                            {{-- === CORRECTED: Ensure this is using x-primary-button === --}}
+                            {{-- This will render the "Save Class" button --}}
                             <x-primary-button class="ms-4">
-                                {{ __('Update Class') }}
+                                {{ __('Save Class') }}
                             </x-primary-button>
+                            {{-- ======================================================= --}}
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>

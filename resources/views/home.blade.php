@@ -1,21 +1,35 @@
-@extends('layouts.app')
+{{--
+|--------------------------------------------------------------------------
+| Home / Default Dashboard View (Tailwind CSS / Breeze Component Structure)
+|--------------------------------------------------------------------------
+|
+| This file serves as the default dashboard for authenticated users who
+| are not an Admin or a Teacher (e.g., Students).
+| It has been converted to use the standard <x-app-layout> component.
+|
+--}}
 
-@section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Dashboard') }}</div>
-                <div class="card-body">
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Dashboard') }}
+        </h2>
+    </x-slot>
+
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    {{-- Check for a success message from a previous action --}}
                     @if (session('status'))
-                        <div class="alert alert-success" role="alert">
+                        <div class="mb-4 font-medium text-sm text-green-600">
                             {{ session('status') }}
                         </div>
                     @endif
-                    {{ __('You are logged in!') }}
+
+                    {{ __("You're logged in!") }}
                 </div>
             </div>
         </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

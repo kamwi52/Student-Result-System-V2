@@ -27,6 +27,7 @@ class EnrollmentController extends Controller
      */
     public function index(ClassSection $classSection)
     {
+        // This part is fine, as it's only querying the 'users' table directly.
         $allStudents = User::where('role', 'student')
             ->when(request('search'), function ($query) {
                 $query->where(function($q) {
@@ -38,9 +39,11 @@ class EnrollmentController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // === MODIFIED: Specify the 'users.id' to resolve ambiguity ===
         $enrolledStudentIds = $classSection->students()
-            ->pluck('id')
+            ->pluck('users.id') // <-- We specify the table name 'users'
             ->toArray();
+        // ===============================================================
 
         return view('admin.enrollments.index', [
             'classSection' => $classSection->loadCount('students'),
@@ -62,6 +65,7 @@ class EnrollmentController extends Controller
 
         DB::transaction(function () use ($classSection, $validated) {
             // The sync method is simpler and sufficient for now
+            // It expects an array of user IDs, which is what the form will provide.
             $classSection->students()->sync($validated['student_ids'] ?? []);
 
             // Event firing can be added later
@@ -71,7 +75,7 @@ class EnrollmentController extends Controller
         });
 
         return redirect()
-            ->route('admin.classes.index')
+            ->route('admin.classes.index') // Redirect back to the class list after saving
             ->with('success', "Enrollments for {$classSection->name} have been successfully updated.");
     }
 }

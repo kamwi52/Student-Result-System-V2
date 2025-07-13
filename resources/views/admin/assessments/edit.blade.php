@@ -8,49 +8,74 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-gray-200">
-                    <x-validation-errors class="mb-4" />
-
-                    <form method="POST" action="{{ route('admin.assessments.update', $assessment) }}">
+                <div class="p-6 text-gray-900">
+                    <form action="{{ route('admin.assessments.update', $assessment) }}" method="POST">
                         @csrf
                         @method('PUT')
 
-                        {{-- Name --}}
-                        <div>
-                            <x-label for="name" value="{{ __('Assessment Name') }}" />
-                            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name', $assessment->name)" required autofocus />
+                        <!-- Assessment Name -->
+                        <div class="mb-4">
+                            <label for="name" class="block text-sm font-medium text-gray-700">Assessment Name</label>
+                            <input type="text" name="name" id="name" value="{{ old('name', $assessment->name) }}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         </div>
 
-                        {{-- Max Marks --}}
-                        <div class="mt-4">
-                            <x-label for="max_marks" value="{{ __('Max Marks') }}" />
-                            <x-text-input id="max_marks" class="block mt-1 w-full" type="number" name="max_marks" :value="old('max_marks', $assessment->max_marks)" required />
+                        <!-- Subject Dropdown -->
+                        <div class="mb-4">
+                            <label for="subject_id" class="block text-sm font-medium text-gray-700">Subject</label>
+                            <select name="subject_id" id="subject_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                @foreach($subjects as $subject)
+                                    <option value="{{ $subject->id }}" {{ old('subject_id', $assessment->subject_id) == $subject->id ? 'selected' : '' }}>
+                                        {{ $subject->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
 
-                        {{-- Weightage --}}
-                        <div class="mt-4">
-                            <x-label for="weightage" value="{{ __('Weightage (%)') }}" />
-                            <x-text-input id="weightage" class="block mt-1 w-full" type="number" name="weightage" :value="old('weightage', $assessment->weightage)" required />
+                        <!-- ============================================= -->
+                        <!-- ====== THE NEW CLASS DROPDOWN IS HERE ======= -->
+                        <!-- ============================================= -->
+                        <div class="mb-4">
+                            <label for="class_id" class="block text-sm font-medium text-gray-700">Class</label>
+                            <select name="class_id" id="class_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value="" disabled>-- Select a Class --</option>
+                                @foreach($classes as $class)
+                                    <option value="{{ $class->id }}" {{ old('class_id', $assessment->class_id) == $class->id ? 'selected' : '' }}>
+                                        {{ $class->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <!-- ============================================= -->
+
+                        <!-- Max Marks -->
+                        <div class="mb-4">
+                            <label for="max_marks" class="block text-sm font-medium text-gray-700">Max Marks</label>
+                            <input type="number" name="max_marks" id="max_marks" value="{{ old('max_marks', $assessment->max_marks) }}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         </div>
 
-                        {{-- Academic Session --}}
-                         <div class="mt-4">
-                            <x-label for="academic_session_id" value="{{ __('Academic Session') }}" />
-                            <select name="academic_session_id" id="academic_session_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                <option value="">Select Session</option>
+                        <!-- Weightage -->
+                        <div class="mb-4">
+                            <label for="weightage" class="block text-sm font-medium text-gray-700">Weightage (%)</label>
+                            <input type="number" name="weightage" id="weightage" value="{{ old('weightage', $assessment->weightage) }}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+
+                        <!-- Academic Session Dropdown -->
+                        <div class="mb-4">
+                            <label for="academic_session_id" class="block text-sm font-medium text-gray-700">Academic Session</label>
+                            <select name="academic_session_id" id="academic_session_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                 @foreach($academicSessions as $session)
-                                    <option value="{{ $session->id }}" @if(old('academic_session_id', $assessment->academic_session_id) == $session->id) selected @endif>{{ $session->name }}</option>
+                                    <option value="{{ $session->id }}" {{ old('academic_session_id', $assessment->academic_session_id) == $session->id ? 'selected' : '' }}>
+                                        {{ $session->name }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="flex items-center justify-end mt-4">
-                            <a class="underline text-sm text-gray-600 hover:text-gray-900" href="{{ route('admin.assessments.index') }}">
-                                {{ __('Cancel') }}
-                            </a>
-                            <x-primary-button class="ms-4">
-                                {{ __('Save Assessment') }}
-                            </x-primary-button>
+                             <a href="{{ route('admin.assessments.index') }}" class="text-sm text-gray-600 hover:text-gray-900 mr-4">Cancel</a>
+                            <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-md">
+                                Save Assessment
+                            </button>
                         </div>
                     </form>
                 </div>

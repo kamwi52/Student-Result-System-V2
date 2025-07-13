@@ -5,31 +5,19 @@ namespace App\Http\Controllers\Teacher;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     /**
-     * Display the teacher's dashboard.
+     * Display the teacher's main dashboard.
+     * This now serves as a simple landing page with links to key actions.
      *
-     * This method fetches all classes assigned to the currently
-     * logged-in teacher and displays them in the dashboard view.
-     * It eager-loads related subject and academic session data,
-     * and also gets a count of students enrolled in each class.
+     * @return \Illuminate\View\View
      */
-    public function index(): View
+    public function index()
     {
-        // Get the currently authenticated user (the teacher)
-        $teacher = Auth::user();
-
-        // Fetch the classes assigned to this teacher
-        // The relationship should be defined in the User model
-        $classes = $teacher->classes() // Assumes a 'classes' relationship on the User model
-                           ->with(['subject', 'academicSession']) // Eager-load for efficiency
-                           ->withCount('students') // Get the number of enrolled students
-                           ->paginate(10); // Paginate the results
-
-        // Return the view and pass the classes data to it
-        return view('teacher.dashboard', compact('classes'));
+        // No complex data is needed here anymore.
+        // We just return the view, which contains the link to the bulk grade entry feature.
+        return view('teacher.dashboard');
     }
 }

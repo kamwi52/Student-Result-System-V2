@@ -4,9 +4,17 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Assessment Management') }}
             </h2>
-            <a href="{{ route('admin.assessments.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
-                Create Assessment
-            </a>
+            <div class="flex space-x-2">
+                <a href="{{ route('admin.assessments.import.show') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150">
+                    Import
+                </a>
+                <a href="{{ route('admin.assessments.export') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
+                    Export
+                </a>
+                <a href="{{ route('admin.assessments.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                    Create Assessment
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -24,9 +32,10 @@
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
-                             <thead class="bg-gray-50">
+                            <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Max Marks</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Weightage (%)</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
@@ -37,6 +46,7 @@
                                 @forelse ($assessments as $assessment)
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->name }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->subject->name ?? 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->max_marks }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->weightage }}%</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $assessment->academicSession->name ?? 'N/A' }}</td>
@@ -51,7 +61,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center py-4">No assessments found.</td>
+                                        <td colspan="6" class="text-center py-4">No assessments found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

@@ -4,29 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Subject extends Model
 {
     use HasFactory;
 
-    // ADD 'user_id' TO THIS ARRAY
-    protected $fillable = [
-        'name',
-        'code',
-        'description',
-        'user_id', // <-- THIS IS THE REQUIRED CHANGE
-    ];
+    /**
+     * The attributes that are mass assignable.
+     */
+    protected $fillable = ['name', 'code', 'description'];
 
-    // This is the relationship method you added earlier, which is also correct
-    public function teacher()
+    /**
+     * The classes that this subject is taught in.
+     */
+    public function classSections(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'user_id');
+        // This tells Laravel to use our new pivot table.
+        return $this->belongsToMany(ClassSection::class, 'class_section_subject');
     }
-
-    // This is the other relationship method, also correct
-    public function students()
-    {
-        return $this->belongsToMany(User::class);
-    }
-    public function classSections() { return $this->hasMany(ClassSection::class); }
 }

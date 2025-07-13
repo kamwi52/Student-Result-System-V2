@@ -3,40 +3,43 @@
 namespace App\Imports;
 
 use App\Models\Assessment;
+use App\Models\Subject;
+use App\Models\AcademicSession;
 use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithStartRow; // <-- Add this new concern
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithValidation;
 
-class AssessmentsImport implements ToModel, WithStartRow // <-- Implement WithStartRow
+class AssessmentsImport implements ToModel, WithHeadingRow, WithValidation
 {
-    private int $academicSessionId;
+    private $subjects;
+    private $sessions;
 
-    public function __construct(int $academicSessionId)
+    public function __construct()
     {
-        $this->academicSessionId = $academicSessionId;
+        // Cache subjects and sessions to avoid repeated DB calls inside the loop
+        $this->subjects = Subject::pluck('id', 'name');
+        $this->sessions = AcademicSession::pluck('id', 'name');
     }
 
-    /**
-     * @param array $row
-     * @return \Illuminate\Database\Eloquent\Model|null
-     */
     public function model(array $row)
     {
-        // Now we access columns by their index number, which is more reliable.
-        // Column A is index 0, Column B is index 1, etc.
         return new Assessment([
-            'name'                => $row[0], // First column
-            'max_marks'           => $row[1], // Second column
-            'weightage'           => $row[2], // Third column
-            'academic_session_id' => $this->academicSessionId,
+            'name'     => $row['assessment_name'],
+            'subject_id' => $this->subjects[$row['subject_name']],
+            'academic_session_id' => $this->sessions[$row['academic_session_name']],
+            'max_marks' => $row['max_marks'],
+            'weightage' => $row['weightage_percent'],
         ]);
     }
 
-    /**
-     * This tells the importer to start reading from the 2nd row, skipping the header.
-     * @return int
-     */
-    public function startRow(): int
+    public function rules(): array
     {
-        return 2;
+        return [
+            'assessment_name' => 'required|string',
+            'subject_name' => 'required|exists:subjects,name',
+            'academic_session_name' => 'required|exists:academic_sessions,name',
+            'max_marks' => 'required|integer',
+            'weightage_percent' => 'required|integer',
+        ];
     }
 }

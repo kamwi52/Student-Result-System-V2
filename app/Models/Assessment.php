@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Assessment extends Model
 {
@@ -18,10 +17,20 @@ class Assessment extends Model
      */
     protected $fillable = [
         'name',
+        'subject_id',
+        'class_id', // <-- 1. ADD class_id TO MAKE IT SAVEABLE
+        'academic_session_id',
         'max_marks',
         'weightage',
-        'academic_session_id',
     ];
+
+    /**
+     * Get the subject that this assessment belongs to.
+     */
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
+    }
 
     /**
      * Get the academic session that this assessment belongs to.
@@ -32,10 +41,15 @@ class Assessment extends Model
     }
 
     /**
-     * Get all of the results for the Assessment.
+     * =========================================================
+     *  2. DEFINE THE NEW RELATIONSHIP TO THE CLASS
+     * =========================================================
+     * Get the class section that this assessment belongs to.
      */
-    public function results(): HasMany
+    public function classSection(): BelongsTo
     {
-        return $this->hasMany(Result::class);
+        // This tells Laravel that an Assessment belongs to a ClassSection,
+        // and the link is stored in the 'class_id' column.
+        return $this->belongsTo(ClassSection::class, 'class_id');
     }
 }

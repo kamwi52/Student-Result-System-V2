@@ -20,6 +20,17 @@
                             <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus />
                         </div>
 
+                        {{-- Subject --}}
+                        <div class="mt-4">
+                            <x-label for="subject_id" value="{{ __('Subject') }}" />
+                            <select name="subject_id" id="subject_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                <option value="">Select Subject</option>
+                                @foreach($subjects as $subject)
+                                    <option value="{{ $subject->id }}" @if(old('subject_id') == $subject->id) selected @endif>{{ $subject->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         {{-- Max Marks --}}
                         <div class="mt-4">
                             <x-label for="max_marks" value="{{ __('Max Marks') }}" />
@@ -33,7 +44,7 @@
                         </div>
 
                         {{-- Academic Session --}}
-                         <div class="mt-4">
+                        <div class="mt-4">
                             <x-label for="academic_session_id" value="{{ __('Academic Session') }}" />
                             <select name="academic_session_id" id="academic_session_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                 <option value="">Select Session</option>

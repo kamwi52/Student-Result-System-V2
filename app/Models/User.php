@@ -4,11 +4,10 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany; // <-- ADD THIS if not present
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Models\ClassSection; // <-- ADD THIS if not present
-use App\Models\Result; // <-- ADD THIS
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -23,7 +22,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role', // Make sure 'role' is in fillable if you are using User::create
+        'role',
+        'student_id', // Assuming you have this for students
     ];
 
     /**
@@ -50,18 +50,30 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the classes taught by the user (if they are a teacher).
-     */
-    public function classes(): HasMany
-    {
-        return $this->hasMany(ClassSection::class, 'teacher_id');
-    }
-
-    /**
-     * Get all of the results for the User (as a student).
+     * Get the results for the student.
+     * A user (student) has many results.
      */
     public function results(): HasMany
     {
         return $this->hasMany(Result::class);
+    }
+
+    /**
+     * The classes that a user (teacher) is assigned to teach.
+     * This is the relationship that will fix the error.
+     */
+    public function classSections(): BelongsToMany
+    {
+        // Assumes a pivot table named 'class_section_user'
+        return $this->belongsToMany(ClassSection::class, 'class_section_user');
+    }
+
+    /**
+     * The enrollments for a user (student).
+     * A student has many enrollments.
+     */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
     }
 }

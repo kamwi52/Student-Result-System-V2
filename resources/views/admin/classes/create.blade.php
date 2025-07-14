@@ -15,15 +15,15 @@
 
                     <!-- Class Name -->
                     <div class="mb-4">
-                        <x-label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Class Name</x-label>
-                        <x-text-input id="name" class="mt-1 block w-full" type="text" name="name" :value="old('name')" required autofocus placeholder="e.g. Grade 8A, Year 10 Section B" />
+                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Class Name</label>
+                        <input id="name" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" type="text" name="name" value="{{ old('name') }}" required autofocus placeholder="e.g. Grade 8A, Year 10 Section B" />
                     </div>
 
                     <!-- Teacher Dropdown -->
                     <div class="mt-4">
-                        <x-label for="teacher_id" value="{{ __('Teacher') }}" />
+                        <label for="teacher_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Teacher') }}</label>
                         <select name="teacher_id" id="teacher_id" class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 rounded-md">
-                            <option value="">Select Teacher</option>
+                            <option value="">-- Unassigned --</option>
                             @foreach($teachers as $teacher)
                                 <option value="{{ $teacher->id }}" @if(old('teacher_id') == $teacher->id) selected @endif>{{ $teacher->name }}</option>
                             @endforeach
@@ -32,8 +32,8 @@
 
                     <!-- Academic Session Dropdown -->
                     <div class="mt-4">
-                        <x-label for="academic_session_id" value="{{ __('Academic Session') }}" />
-                        <select name="academic_session_id" id="academic_session_id" class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 rounded-md">
+                        <label for="academic_session_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Academic Session') }}</label>
+                        <select name="academic_session_id" id="academic_session_id" required class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 rounded-md">
                             <option value="">Select Session</option>
                             @foreach($academicSessions as $session)
                                 <option value="{{ $session->id }}" @if(old('academic_session_id') == $session->id) selected @endif>{{ $session->name }}</option>
@@ -43,9 +43,9 @@
 
                      <!-- Grading Scale Dropdown -->
                      <div class="mt-4">
-                        <x-label for="grading_scale_id" value="{{ __('Grading System') }}" />
+                        <label for="grading_scale_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Grading System') }}</label>
                         <select name="grading_scale_id" id="grading_scale_id" class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:ring-indigo-500 rounded-md">
-                            <option value="">Select Grading System</option>
+                            <option value="">-- Not Set --</option>
                             @foreach($gradingScales as $scale)
                                 <option value="{{ $scale->id }}" @if(old('grading_scale_id') == $scale->id) selected @endif>{{ $scale->name }}</option>
                             @endforeach
@@ -54,7 +54,7 @@
 
                     <!-- Subjects Checkboxes -->
                     <div class="mt-4">
-                        <x-label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Subjects to this Class</x-label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Subjects to this Class</label>
                         <div class="mt-2 space-y-2 rounded-md border border-gray-200 dark:border-gray-700 p-4 max-h-60 overflow-y-auto">
                             @forelse($subjects as $subject)
                                 <label class="flex items-center">

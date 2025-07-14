@@ -5,77 +5,60 @@ namespace App\Http\Controllers\Teacher;
 use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\Result;
-use App\Models\SchoolClass;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
+use App\Models\ClassSection;
+use Illuminate\Support\Facades\Auth;
 
 class GradebookController extends Controller
 {
     /**
-     * Shows the form for editing the grades for a specific class.
+     * PAGE 1: Display a list of all classes assigned to the teacher.
      */
-    public function edit(SchoolClass $class): View
+    public function index()
     {
-        $class->load('students');
-        $students = $class->students()->orderBy('name')->get();
-        $assessments = Assessment::orderBy('name')->get();
-        $grades = Result::where('school_class_id', $class->id)
-            ->get()
-            ->keyBy(function ($item) {
-                return $item['student_id'] . '-' . $item['assessment_id'];
-            })
-            ->map(function ($item) {
-                return $item['score'];
-            });
-
-        return view('teacher.gradebook.edit', [
-            'class'       => $class,
-            'students'    => $students,
-            'assessments' => $assessments,
-            'grades'      => $grades,
-        ]);
+        $classes = Auth::user()->classes()->with('subjects')->get();
+        return view('teacher.gradebook.index', compact('classes'));
     }
 
-
     /**
-     * Store or update the grades for the specified class.
-     * This is the "Big Boss" method that does the heavy lifting.
+     * PAGE 2: Display a list of assessments for the selected class.
      */
-    public function store(Request $request, SchoolClass $class): RedirectResponse
+    public function showAssessments(ClassSection $classSection)
     {
-        // 1. VALIDATION: Ensure the data is in the correct format.
-        $request->validate([
-            'grades' => ['required', 'array'],
-            // Ensure every grade submitted is for a real student and a real assessment
-            'grades.*.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
-        ]);
-
-
-        // 2. LOOP AND SAVE: Iterate through every grade submitted from the form.
-        foreach ($request->grades as $studentId => $assessments) {
-            foreach ($assessments as $assessmentId => $score) {
-                // Use updateOrCreate to be efficient.
-                // It will CREATE a new record if one doesn't exist,
-                // or UPDATE the existing one if it does.
-                Result::updateOrCreate(
-                    [
-                        // The unique keys to find the record
-                        'student_id'        => $studentId,
-                        'school_class_id'   => $class->id,
-                        'assessment_id'     => $assessmentId,
-                    ],
-                    [
-                        // The value to save. Use null if the input box was empty.
-                        'score' => empty($score) ? null : $score,
-                    ]
-                );
-            }
+        // Security Check
+        if ($classSection->teacher_id !== Auth::id()) {
+            abort(403, 'Unauthorized Action');
         }
 
-        // 3. REDIRECT WITH SUCCESS: Send the teacher back to their dashboard.
-        // The 'with' method flashes a success message to the session.
-        return redirect()->route('teacher.dashboard')
-                         ->with('success', 'Grades for ' . $class->name . ' have been saved successfully!');
+        // Get all subject IDs for the class
+        $subjectIds = $classSection->subjects()->pluck('subjects.id');
+
+        // Find all assessments that match those subject IDs
+        $assessments = Assessment::whereIn('subject_id', $subjectIds)
+            ->orderBy('assessment_date', 'desc')
+            ->get();
+            
+        return view('teacher.gradebook.assessments', compact('classSection', 'assessments'));
+    }
+
+    /**
+     * PAGE 3: Display the results for the selected class and assessment.
+     */
+    public function showResults(ClassSection $classSection, Assessment $assessment)
+    {
+        // Security Check
+        if ($classSection->teacher_id !== Auth::id()) {
+            abort(403, 'Unauthorized Action');
+        }
+
+        // Get all students enrolled in the class.
+        $students = $classSection->students()->orderBy('name')->get();
+
+        // Get all relevant results in a single query.
+        $results = Result::where('assessment_id', $assessment->id)
+            ->whereIn('user_id', $students->pluck('id'))
+            ->get()
+            ->keyBy('user_id'); // Key by user_id for easy lookup in the view.
+
+        return view('teacher.gradebook.results', compact('classSection', 'assessment', 'students', 'results'));
     }
 }

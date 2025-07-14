@@ -21,7 +21,7 @@ class ClassSection extends Model
     ];
 
     /**
-     * The subjects taught in this class.
+     * The subjects taught in this class (many-to-many).
      */
     public function subjects(): BelongsToMany
     {
@@ -29,7 +29,15 @@ class ClassSection extends Model
     }
     
     /**
-     * The students enrolled in this class.
+     * A class section may have a primary subject.
+     */
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
+    }
+    
+    /**
+     * The primary relationship to get students enrolled in this class.
      */
     public function students(): BelongsToMany
     {
@@ -46,23 +54,19 @@ class ClassSection extends Model
      */
     public function getAssessments()
     {
-        // Get all subject IDs associated with this class from the pivot table
+        // This needs the Assessment model to be imported.
+        // Adding the use statement at the top of the file would be best practice.
         $subjectIds = $this->subjects()->pluck('subjects.id');
 
-        // If this class teaches no subjects, there can be no assessments.
         if ($subjectIds->isEmpty()) {
             return collect();
         }
 
-        // --- THE FIX ---
-        // Return a collection of assessments that belong to the class's subjects
-        // AND ALSO belong to the same academic session as the class itself.
         return Assessment::with('subject')
             ->whereIn('subject_id', $subjectIds)
-            ->where('academic_session_id', $this->academic_session_id) // This is the crucial missing line.
+            ->where('academic_session_id', $this->academic_session_id)
             ->get()
             ->map(function ($assessment) {
-                // Create a user-friendly display name for the dropdown
                 $assessment->display_name = "{$assessment->subject->name} - {$assessment->name} (Max: {$assessment->max_marks})";
                 return $assessment;
             })
@@ -83,5 +87,15 @@ class ClassSection extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    /**
+     * === THE FIX ===
+     * Alias for the students() relationship. This allows older controllers
+     * that call enrollments() to work without needing to be refactored.
+     */
+    public function enrollments(): BelongsToMany
+    {
+        return $this->students();
     }
 }

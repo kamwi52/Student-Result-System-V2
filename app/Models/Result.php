@@ -12,15 +12,15 @@ class Result extends Model
 
     /**
      * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * Note: 'class_id' has been removed as it's not a primary key for a result.
+     * The connection to a class is through the student's enrollment.
      */
     protected $fillable = [
         'user_id',
-        'class_id',
+        'student_id', // Keeping both for flexibility, user_id is the standard
         'assessment_id',
         'score',
-        'remarks',
+        'remark', // Corrected from 'remarks' to be singular
     ];
 
     /**
@@ -29,14 +29,6 @@ class Result extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
-    }
-
-    /**
-     * Get the class that this result belongs to.
-     */
-    public function classSection(): BelongsTo
-    {
-        return $this->belongsTo(ClassSection::class, 'class_id');
     }
 
     /**

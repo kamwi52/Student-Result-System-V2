@@ -27,19 +27,6 @@ class UserController extends Controller
      */
     public function create(): View
     {
-        // Define the roles to pass to the create view as well (optional, but good practice if create also uses roles)
-        // In your provided create view, roles were not a dropdown, so it might not be strictly needed there yet.
-        // If you add a role dropdown to the create form later, uncomment these lines:
-        /*
-        $roles = [
-            'admin' => 'Admin',
-            'teacher' => 'Teacher',
-            'student' => 'Student',
-        ];
-        return view('admin.users.create', compact('roles'));
-        */
-
-        // Keeping the original return for create based on your provided view
         return view('admin.users.create');
     }
 
@@ -60,6 +47,7 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
+            'email_verified_at' => now(), // Verifies user created via the form
         ]);
 
         return to_route('admin.users.index')->with('success', 'User created successfully.');
@@ -70,15 +58,13 @@ class UserController extends Controller
      */
     public function edit(User $user): View
     {
-        // === MODIFIED: Define the roles array and pass it to the view ===
         $roles = [
             'admin' => 'Admin',
             'teacher' => 'Teacher',
             'student' => 'Student',
         ];
 
-        return view('admin.users.edit', compact('user', 'roles')); // Pass both 'user' and 'roles'
-        // ================================================================
+        return view('admin.users.edit', compact('user', 'roles'));
     }
 
     /**
@@ -116,10 +102,6 @@ class UserController extends Controller
         $user->delete();
         return to_route('admin.users.index')->with('success', 'User deleted successfully.');
     }
-
-    // =======================================================
-    // == ADDED METHODS FOR BULK USER IMPORT
-    // =======================================================
 
     /**
      * Show the form for importing users.

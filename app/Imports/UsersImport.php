@@ -4,27 +4,43 @@ namespace App\Imports;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Row;
 
-// We implement WithHeadingRow to easily access columns by their name
-class UsersImport implements ToModel, WithHeadingRow
+class UsersImport implements OnEachRow, WithHeadingRow
 {
     /**
-    * @param array $row
-    *
-    * @return \Illuminate\Database\Eloquent\Model|null
-    */
-    public function model(array $row)
+     * This method is called for each row, giving us a Row object.
+     * We will manually perform the update or create logic here.
+     * This is the most reliable method for this task.
+     *
+     * @param Row $row
+     */
+    public function onRow(Row $row)
     {
-        // This method is called for every row in the spreadsheet.
-        // It maps the column names from the spreadsheet (e.g., 'name', 'email')
-        // to the fields in the User model.
-        return new User([
-            'name'     => $row['name'],
-            'email'    => $row['email'],
-            'password' => Hash::make($row['password']), // We must hash the password for security
-            'role'     => $row['role'] ?? 'student', // Default to 'student' if the role column is missing
-        ]);
+        // Get the row data as an array
+        $rowData = $row->toArray();
+
+        // Skip the row if the email is missing, which prevents errors from blank lines in the CSV.
+        if (empty($rowData['email'])) {
+            return;
+        }
+
+        // Use updateOrCreate to find a user by their email.
+        // If they exist, it updates them. If not, it creates them.
+        User::updateOrCreate(
+            [
+                // This is the unique key to find the user by.
+                'email' => $rowData['email'],
+            ],
+            [
+                // These are the values to set on the new or updated user.
+                'name' => $rowData['name'],
+                'password' => Hash::make($rowData['password']),
+                'role' => $rowData['role'] ?? 'student',
+                'email_verified_at' => now(), // This ensures all imported/updated users can log in.
+            ]
+        );
     }
 }

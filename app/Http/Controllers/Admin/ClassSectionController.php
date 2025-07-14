@@ -141,4 +141,78 @@ class ClassSectionController extends Controller
             return redirect()->back()->with('import_errors', ['An unexpected error occurred: ' . $e->getMessage()]);
         }
     }
+    // Inside app/Http/Controllers/Admin/ClassSectionController.php
+
+// ADD THESE TWO NEW METHODS
+
+/**
+ * Display the student enrollment form.
+ */
+public function showEnrollForm()
+{
+    return view('admin.classes.enroll-form');
+}
+
+/**
+ * Handle the bulk student enrollment from a CSV file.
+ */
+public function handleEnrollmentImport(Request $request)
+{
+    $request->validate([
+        'enrollments_file' => 'required|file|mimes:csv,txt',
+    ]);
+
+    $file = $request->file('enrollments_file');
+    $rows = array_map('str_getcsv', file($file->getPathname()));
+    $header = array_map('trim', array_shift($rows));
+
+    $requiredHeader = ['student_email', 'class_name'];
+    if ($header !== $requiredHeader) {
+        return redirect()->back()->with('import_errors', ['Invalid CSV header. Must be: student_email,class_name']);
+    }
+
+    $errors = [];
+    $successCount = 0;
+    
+    // Cache lookups to avoid querying in a loop
+    $students = User::where('role', 'student')->pluck('id', 'email');
+    $classes = ClassSection::pluck('id', 'name');
+
+    foreach ($rows as $key => $row) {
+        $rowNumber = $key + 2;
+        $data = array_combine($header, $row);
+
+        $studentEmail = trim($data['student_email']);
+        $className = trim($data['class_name']);
+
+        if (!isset($students[$studentEmail])) {
+            $errors[] = "Row #{$rowNumber}: Student with email '{$studentEmail}' not found or is not a student.";
+            continue;
+        }
+
+        if (!isset($classes[$className])) {
+            $errors[] = "Row #{$rowNumber}: Class with name '{$className}' not found.";
+            continue;
+        }
+
+        $studentId = $students[$studentEmail];
+        $classId = $classes[$className];
+
+        try {
+            // Use a raw DB insert for the pivot table for efficiency
+            // and to avoid model events if not needed.
+            DB::table('enrollments')->updateOrInsert(
+                ['user_id' => $studentId, 'class_section_id' => $classId],
+                ['user_id' => $studentId, 'class_section_id' => $classId]
+            );
+            $successCount++;
+        } catch (\Exception $e) {
+            $errors[] = "Row #{$rowNumber}: Could not enroll student '{$studentEmail}' in class '{$className}'. Error: " . $e->getMessage();
+        }
+    }
+
+    $message = "Import process finished. {$successCount} enrollments were successfully created or updated.";
+
+    return redirect()->back()->with('success', $message)->with('import_errors', $errors);
+}
 }

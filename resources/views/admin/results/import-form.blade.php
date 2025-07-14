@@ -12,8 +12,9 @@
                 <div class="mb-6">
                     <h3 class="text-lg font-medium text-gray-900">Instructions</h3>
                     <ol class="list-decimal list-inside text-sm text-gray-600 space-y-1 mt-2">
-                        <li><strong>Step 1:</strong> Select the Assessment you are importing results for.</li>
-                        <li><strong>Step 2:</strong> Choose your CSV file. It must have two columns in this exact order: <strong>student_email,score</strong>.</li>
+                        <li><strong>Step 1:</strong> Select the Class you are importing results for.</li>
+                        <li><strong>Step 2:</strong> Select the specific Assessment from the list that appears.</li>
+                        <li><strong>Step 3:</strong> Choose your CSV file. It must have two columns in this exact order: <strong>student_email,score</strong>. An optional third column for `remarks` can be included.</li>
                     </ol>
                 </div>
 
@@ -42,22 +43,30 @@
                 <form action="{{ route('admin.results.import.handle') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     
-                    <!-- Single Assessment Dropdown -->
+                    <!-- Step 1: Class Dropdown -->
                     <div>
-                        <label for="assessment_id" class="block text-sm font-medium text-gray-700">Step 1: Assessment</label>
-                        <select name="assessment_id" id="assessment_id" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                            <option value="">-- Select an Assessment --</option>
-                            @foreach($assessments as $assessment)
-                                <option value="{{ $assessment->id }}" {{ old('assessment_id') == $assessment->id ? 'selected' : '' }}>
-                                    {{ $assessment->display_name }}
+                        <label for="class_id" class="block text-sm font-medium text-gray-700">Step 1: Class</label>
+                        <select name="class_id" id="class_id" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="">-- Select a Class --</option>
+                            @foreach($classes as $class)
+                                <option value="{{ $class->id }}" {{ old('class_id') == $class->id ? 'selected' : '' }}>
+                                    {{ $class->name }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
 
-                    <!-- File Input -->
+                    <!-- Step 2: Assessment Dropdown (Populated by JS) -->
                     <div>
-                        <label for="results_file" class="block text-sm font-medium text-gray-700">Step 2: Results CSV File</label>
+                        <label for="assessment_id" class="block text-sm font-medium text-gray-700">Step 2: Assessment</label>
+                        <select name="assessment_id" id="assessment_id" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" disabled>
+                            <option value="">-- Select a Class First --</option>
+                        </select>
+                    </div>
+
+                    <!-- Step 3: File Input -->
+                    <div>
+                        <label for="results_file" class="block text-sm font-medium text-gray-700">Step 3: Results CSV File</label>
                         <input type="file" name="results_file" id="results_file" required class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none">
                     </div>
                     
@@ -72,4 +81,46 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const classAssessmentsMap = @json($classAssessmentsMap);
+            const classSelect = document.getElementById('class_id');
+            const assessmentSelect = document.getElementById('assessment_id');
+            const oldClassId = "{{ old('class_id') }}";
+            const oldAssessmentId = "{{ old('assessment_id') }}";
+
+            function populateAssessments(classId, selectedAssessmentId = null) {
+                const assessments = classAssessmentsMap[classId] || [];
+                assessmentSelect.innerHTML = '<option value="">-- Select an Assessment --</option>'; // Reset
+
+                if (assessments.length > 0) {
+                    assessments.forEach(assessment => {
+                        const option = document.createElement('option');
+                        option.value = assessment.id;
+                        option.textContent = assessment.display_name;
+                        if (assessment.id == selectedAssessmentId) {
+                            option.selected = true;
+                        }
+                        assessmentSelect.appendChild(option);
+                    });
+                    assessmentSelect.disabled = false;
+                } else {
+                    assessmentSelect.innerHTML = '<option value="">-- No assessments found for this class --</option>';
+                    assessmentSelect.disabled = true;
+                }
+            }
+            
+            classSelect.addEventListener('change', function () {
+                const selectedClassId = this.value;
+                populateAssessments(selectedClassId);
+            });
+
+            // On page load, if there's an old class ID (e.g., due to validation error),
+            // trigger the change to populate the assessments and re-select the old assessment.
+            if (oldClassId) {
+                populateAssessments(oldClassId, oldAssessmentId);
+            }
+        });
+    </script>
 </x-app-layout>

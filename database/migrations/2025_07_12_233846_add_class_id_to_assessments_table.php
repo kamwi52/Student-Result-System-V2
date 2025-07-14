@@ -11,12 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('assessments', function (Blueprint $table) {
-            // This adds the new 'class_id' column to your table.
-            // 'after('subject_id')' is optional but keeps the table organized.
-            // 'nullable()' makes it optional so old records don't cause errors.
-            $table->foreignId('class_id')->nullable()->constrained('class_sections')->after('subject_id');
-        });
+        // We leave this method empty to prevent the column from being added.
     }
 
     /**
@@ -24,10 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('assessments', function (Blueprint $table) {
-            // This tells Laravel how to remove the column if you ever need to reverse the migration.
-            $table->dropForeign(['class_id']);
-            $table->dropColumn('class_id');
-        });
+        // We leave this empty as well.
     }
 };

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateEnrollmentsTable extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
@@ -12,12 +12,18 @@ class CreateEnrollmentsTable extends Migration
     public function up(): void
     {
         Schema::create('enrollments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('class_section_id')->constrained('classes')->cascadeOnDelete();
-            $table->timestamps();
+            // This links to the users table
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            
+            // THIS IS THE MOST LIKELY SOURCE OF THE ERROR.
+            // It MUST constrain to the 'class_sections' table.
+            $table->foreignId('class_section_id')->constrained('class_sections')->onDelete('cascade');
 
-            $table->unique(['user_id', 'class_section_id']);
+            // This ensures a student can't be enrolled in the same class twice.
+            $table->primary(['user_id', 'class_section_id']);
+            
+            // Timestamps are good practice but optional for a pivot table.
+            $table->timestamps();
         });
     }
 
@@ -28,4 +34,4 @@ class CreateEnrollmentsTable extends Migration
     {
         Schema::dropIfExists('enrollments');
     }
-}
+};

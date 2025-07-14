@@ -8,65 +8,58 @@ use App\Models\User;
 use App\Models\Assessment;
 use App\Models\ClassSection;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 
 class ResultController extends Controller
 {
-    // ... index, create, store methods remain unchanged ...
     public function index()
     {
         $results = Result::with(['student', 'assessment.subject', 'classSection'])->latest()->paginate(20);
         return view('admin.results.index', compact('results'));
     }
-    public function create()
-    {
-        // ...
-    }
-    public function store(Request $request)
-    {
-        // ...
-    }
 
     public function showImportForm()
     {
-        $assessments = Assessment::with('subject')->get()->map(function ($assessment) {
-            $subjectName = $assessment->subject->name ?? 'Unassigned';
-            $assessment->display_name = "{$subjectName} - {$assessment->name} (Max: {$assessment->max_marks})";
-            return $assessment;
-        })->sortBy('display_name');
-        return view('admin.results.import-form', compact('assessments'));
+        $classes = ClassSection::orderBy('name')->get();
+        
+        $classAssessmentsMap = [];
+        foreach ($classes as $class) {
+            $classAssessmentsMap[$class->id] = $class->getAssessments()->map(function($assessment) {
+                return [
+                    'id' => $assessment->id,
+                    'display_name' => $assessment->display_name
+                ];
+            })->values();
+        }
+
+        return view('admin.results.import-form', compact('classes', 'classAssessmentsMap'));
     }
 
-    /**
-     * Handle the imported results file - FINAL CORRECTED VERSION
-     */
     public function handleImport(Request $request)
     {
         $request->validate([
+            'class_id' => 'required|exists:class_sections,id',
             'assessment_id' => 'required|exists:assessments,id',
             'results_file' => 'required|file|mimes:csv,txt',
         ]);
 
-        $assessment = Assessment::with('subject.classSections')->findOrFail($request->assessment_id);
+        $classId = $request->class_id;
+        $assessment = Assessment::findOrFail($request->assessment_id);
         $file = $request->file('results_file');
         
-        // --- THIS IS THE KEY LOGIC FIX ---
-        // Find the first class associated with the assessment's subject.
-        $classSection = $assessment->subject->classSections()->first();
-        if (!$classSection) {
-            return redirect()->back()->withInput()->with('import_errors', ["The selected assessment's subject ('{$assessment->subject->name}') is not assigned to any class."]);
-        }
-        $classId = $classSection->id;
-        // ------------------------------------
-
         $rows = array_map('str_getcsv', file($file->getPathname()));
-        $header = array_shift($rows);
+        $header = array_map('trim', array_shift($rows));
 
-        $requiredHeader = ['student_email', 'score'];
-        if (array_map('trim', $header) !== $requiredHeader) {
-            return redirect()->back()->withInput()->with('import_errors', ['Invalid CSV header. Must be exactly: student_email,score']);
+        // --- THIS IS THE FIX ---
+        // Some CSV files (from Excel) have a hidden BOM character at the start.
+        // This code detects and removes it from the first header column.
+        if (isset($header[0]) && strpos($header[0], "\xef\xbb\xbf") === 0) {
+            $header[0] = substr($header[0], 3);
+        }
+        // --- END OF FIX ---
+
+        $requiredHeaders = ['student_email', 'score'];
+        if (count(array_intersect($requiredHeaders, $header)) < 2) {
+             return redirect()->back()->withInput()->with('import_errors', ['Invalid CSV header. Must contain at least: student_email,score']);
         }
 
         $errors = [];
@@ -76,12 +69,12 @@ class ResultController extends Controller
 
         foreach($rows as $key => $row) {
             $rowNumber = $key + 2;
+            $rowData = array_combine($header, $row);
 
             try {
-                if (count($row) < 2) throw new \Exception("Invalid format.");
-                $studentEmail = trim($row[0]);
-                $score = trim($row[1]);
-                $remarks = isset($row[2]) ? trim($row[2]) : null;
+                $studentEmail = trim($rowData['student_email']);
+                $score = trim($rowData['score']);
+                $remarks = isset($rowData['remarks']) ? trim($rowData['remarks']) : null;
 
                 if (!isset($students[$studentEmail])) {
                     throw new \Exception("Student with email '{$studentEmail}' not found or is not a student.");
@@ -89,13 +82,19 @@ class ResultController extends Controller
                 $studentId = $students[$studentEmail];
 
                 if (!is_numeric($score) || $score < 0 || $score > $assessment->max_marks) {
-                    throw new \Exception("Invalid score '{$score}'. Must be between 0 and {$assessment->max_marks}.");
+                    throw new \Exception("Invalid score '{$score}'. Must be a number between 0 and {$assessment->max_marks}.");
                 }
                 
-                // Now we provide the class_id, fixing the NOT NULL error
                 Result::updateOrCreate(
-                    ['user_id' => $studentId, 'assessment_id' => $assessment->id],
-                    ['score' => $score, 'class_id' => $classId, 'remarks' => $remarks ?? 'Imported via CSV']
+                    [
+                        'user_id' => $studentId, 
+                        'assessment_id' => $assessment->id,
+                        'class_id' => $classId 
+                    ],
+                    [
+                        'score' => $score, 
+                        'remarks' => $remarks ?? 'Imported via CSV'
+                    ]
                 );
                 $successCount++;
 
@@ -107,7 +106,9 @@ class ResultController extends Controller
         $message = "Import process finished. $successCount results were successfully created or updated for assessment: '{$assessment->name}'.";
 
         if (!empty($errors)) {
-            return redirect()->route('admin.results.index')->with('success', $message)->with('import_errors', $errors);
+            return redirect()->route('admin.results.index')
+                             ->with('success', $message)
+                             ->with('import_errors', $errors);
         }
 
         return redirect()->route('admin.results.index')->with('success', $message);

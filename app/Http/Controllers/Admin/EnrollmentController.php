@@ -6,76 +6,48 @@ use App\Http\Controllers\Controller;
 use App\Models\ClassSection;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-// We will create these files next
-// use App\Events\StudentsEnrolled;
-// use App\Exports\EnrolledStudentsExport;
-// use Maatwebsite\Excel\Facades\Excel;
 
 class EnrollmentController extends Controller
 {
     /**
-     * We will implement this authorization later. For now, we use the 'is.admin' middleware.
-    public function __construct()
-    {
-        $this->middleware('can:manage-enrollments');
-    }
-    */
-
-    /**
-     * Display paginated, searchable student enrollment interface
+     * Show the form to enroll students in a specific class.
+     *
+     * @param  \App\Models\ClassSection  $classSection
+     * @return \Illuminate\View\View
      */
     public function index(ClassSection $classSection)
     {
-        // This part is fine, as it's only querying the 'users' table directly.
-        $allStudents = User::where('role', 'student')
-            ->when(request('search'), function ($query) {
-                $query->where(function($q) {
-                    $q->where('name', 'like', '%'.request('search').'%')
-                      ->orWhere('email', 'like', '%'.request('search').'%');
-                });
-            })
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+        // Get all users with the 'student' role
+        $allStudents = User::where('role', 'student')->orderBy('name')->get();
 
-        // === MODIFIED: Specify the 'users.id' to resolve ambiguity ===
-        $enrolledStudentIds = $classSection->students()
-            ->pluck('users.id') // <-- We specify the table name 'users'
-            ->toArray();
-        // ===============================================================
+        // Get the IDs of students already enrolled in this class
+        $enrolledStudentIds = $classSection->students()->pluck('users.id')->toArray();
 
         return view('admin.enrollments.index', [
-            'classSection' => $classSection->loadCount('students'),
+            'classSection' => $classSection,
             'allStudents' => $allStudents,
             'enrolledStudentIds' => $enrolledStudentIds,
-            'searchTerm' => request('search')
         ]);
     }
 
     /**
-     * Process enrollment updates with transaction safety
+     * Store the updated enrollment list for the class.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\ClassSection  $classSection
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(Request $request, ClassSection $classSection)
     {
-        $validated = $request->validate([
-            'student_ids' => 'sometimes|array',
-            'student_ids.*' => 'exists:users,id' // Removed role check for simplicity for now
+        $request->validate([
+            'student_ids' => 'nullable|array',
+            'student_ids.*' => 'exists:users,id',
         ]);
 
-        DB::transaction(function () use ($classSection, $validated) {
-            // The sync method is simpler and sufficient for now
-            // It expects an array of user IDs, which is what the form will provide.
-            $classSection->students()->sync($validated['student_ids'] ?? []);
+        // The sync() method is perfect for this. It adds new students,
+        // removes any that were unchecked, and leaves existing ones untouched.
+        $classSection->students()->sync($request->input('student_ids', []));
 
-            // Event firing can be added later
-            // if (!empty($changes['attached']) || !empty($changes['detached'])) {
-            //     event(new StudentsEnrolled($classSection, $changes));
-            // }
-        });
-
-        return redirect()
-            ->route('admin.classes.index') // Redirect back to the class list after saving
-            ->with('success', "Enrollments for {$classSection->name} have been successfully updated.");
+        return redirect()->route('admin.classes.index')->with('success', "Enrollment for '{$classSection->name}' updated successfully.");
     }
 }

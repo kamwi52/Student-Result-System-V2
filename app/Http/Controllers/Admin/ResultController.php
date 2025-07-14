@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Assessment;
 use App\Models\ClassSection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // <-- ADD THIS LINE
 
 class ResultController extends Controller
 {
@@ -48,23 +49,17 @@ class ResultController extends Controller
         
         $rows = array_map('str_getcsv', file($file->getPathname()));
         $header = array_map('trim', array_shift($rows));
-
-        // --- THIS IS THE FIX ---
-        // Some CSV files (from Excel) have a hidden BOM character at the start.
-        // This code detects and removes it from the first header column.
+        
         if (isset($header[0]) && strpos($header[0], "\xef\xbb\xbf") === 0) {
             $header[0] = substr($header[0], 3);
         }
-        // --- END OF FIX ---
 
         $requiredHeaders = ['student_email', 'score'];
         if (count(array_intersect($requiredHeaders, $header)) < 2) {
              return redirect()->back()->withInput()->with('import_errors', ['Invalid CSV header. Must contain at least: student_email,score']);
         }
 
-        $errors = [];
         $successCount = 0;
-        
         $students = User::where('role', 'student')->pluck('id', 'email')->all();
 
         foreach($rows as $key => $row) {
@@ -72,12 +67,14 @@ class ResultController extends Controller
             $rowData = array_combine($header, $row);
 
             try {
+                DB::beginTransaction(); // Start a transaction for this row
+
                 $studentEmail = trim($rowData['student_email']);
                 $score = trim($rowData['score']);
                 $remarks = isset($rowData['remarks']) ? trim($rowData['remarks']) : null;
 
                 if (!isset($students[$studentEmail])) {
-                    throw new \Exception("Student with email '{$studentEmail}' not found or is not a student.");
+                    throw new \Exception("Student with email '{$studentEmail}' not found. Please ensure users are imported and enrolled.");
                 }
                 $studentId = $students[$studentEmail];
 
@@ -86,30 +83,23 @@ class ResultController extends Controller
                 }
                 
                 Result::updateOrCreate(
-                    [
-                        'user_id' => $studentId, 
-                        'assessment_id' => $assessment->id,
-                        'class_id' => $classId 
-                    ],
-                    [
-                        'score' => $score, 
-                        'remarks' => $remarks ?? 'Imported via CSV'
-                    ]
+                    ['user_id' => $studentId, 'assessment_id' => $assessment->id, 'class_id' => $classId ],
+                    ['score' => $score, 'remarks' => $remarks ?? 'Imported via CSV']
                 );
+                
                 $successCount++;
+                DB::commit(); // Commit the successful transaction
 
             } catch (\Exception $e) {
-                $errors[] = "Row #{$rowNumber}: " . $e->getMessage();
+                DB::rollBack(); // Rollback the failed transaction
+                
+                // THIS IS THE CRITICAL DEBUGGING STEP.
+                // It will stop the script and show us the exact error.
+                dd($e); 
             }
         }
 
         $message = "Import process finished. $successCount results were successfully created or updated for assessment: '{$assessment->name}'.";
-
-        if (!empty($errors)) {
-            return redirect()->route('admin.results.index')
-                             ->with('success', $message)
-                             ->with('import_errors', $errors);
-        }
 
         return redirect()->route('admin.results.index')->with('success', $message);
     }

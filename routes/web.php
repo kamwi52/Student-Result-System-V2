@@ -10,13 +10,12 @@ use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ClassSectionController;
 use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\AssessmentController;
-use App\Http\Controllers\Admin\ResultController;
-// use App\Http\Controllers\Admin\AssignmentController; // This remains commented out as the controller does not exist
+use App\Http\Controllers\Admin\ResultController as AdminResultController; // Aliased to avoid conflict
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
 use App\Http\Controllers\Teacher\GradeController;
 use App\Http\Controllers\Teacher\BulkGradeController;
-// === NEW CONTROLLER IMPORT ===
 use App\Http\Controllers\Teacher\GradebookController;
+use App\Http\Controllers\Teacher\ResultController as TeacherResultController; // Aliased
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordController;
@@ -55,90 +54,53 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
     
-    // --- Specific Routes First (To avoid conflicts with resource routes) ---
-
-    // User Import
+    // --- Specific Routes First ---
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.handleImport');
-    
-    // Enrollments
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
-    
-    // Assessment Import/Export
     Route::get('/assessments/import', [AssessmentController::class, 'showImportForm'])->name('assessments.import.show');
     Route::post('/assessments/simple-import', [AssessmentController::class, 'handleSimpleImport'])->name('assessments.simpleImport.handle');
     Route::get('/assessments/export', [AssessmentController::class, 'export'])->name('assessments.export');
-    
-    // Subject Import
     Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
     Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
-
-    // Class Import & Testing
     Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
     Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
-    Route::get('/classes/bare-minimum-test', [ClassSectionController::class, 'handleBareMinimumImport'])->name('classes.bareMinimumTest');
+    Route::get('/results/import', [AdminResultController::class, 'showImportForm'])->name('results.import.show');
+    Route::post('/results/import', [AdminResultController::class, 'handleImport'])->name('results.import.handle');
 
-    // --- NEW NO-FILE POST TEST ROUTES ---
-    Route::get('/classes/post-test', [ClassSectionController::class, 'showPostTest'])->name('classes.showPostTest');
-    Route::post('/classes/post-test', [ClassSectionController::class, 'handlePostTest'])->name('classes.handlePostTest');
-
-    // Result Import
-    Route::get('/results/import', [ResultController::class, 'showImportForm'])->name('results.import.show');
-    Route::post('/results/import', [ResultController::class, 'handleImport'])->name('results.import.handle');
-    
-    // --- Resourceful (General) Routes Last ---
+    // --- Resourceful Routes Last ---
     Route::resource('users', UserController::class);
     Route::resource('subjects', SubjectController::class);
     Route::resource('assessments', AssessmentController::class);
-    Route::resource('results', ResultController::class);
-
-    // === THE FIX ===
-    // We explicitly name the route parameter to match the controller's variable name.
-    Route::resource('classes', ClassSectionController::class)->parameters([
-        'classes' => 'classSection'
-    ]);
+    Route::resource('results', AdminResultController::class); // Use aliased controller
+    Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
 });
 
 // Teacher Routes
 Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
 
-    // === START: NEW GRADEBOOK ROUTES ===
+    // === START: UNIFIED GRADEBOOK AND GRADE ENTRY ROUTES ===
+
+    // Main "Drill-Down" Gradebook flow
     Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
+    Route::get('gradebook/classes/{classSection}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
+    Route::get('gradebook/classes/{classSection}/assessments/{assessment}', [GradebookController::class, 'showResults'])->name('gradebook.results');
 
-    // API routes for dynamic data loading, kept in 'web' middleware for auth
-    // I am changing {classSection} to {schoolClass} to match your model name for clarity
-    Route::get('api/classes/{schoolClass}/assessments', [GradebookController::class, 'getAssessmentsForClass'])->name('api.class.assessments');
-    Route::get('api/classes/{schoolClass}/assessments/{assessment}/results', [GradebookController::class, 'getResults'])->name('api.class.assessment.results');
-    // === END: NEW GRADEBOOK ROUTES ===
-    // In routes/web.php, inside the Teacher Routes group...
-
-// === START: REVISED, SIMPLER GRADEBOOK ROUTES ===
-
-// Page 1: Show a list of the teacher's classes.
-Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
-
-// Page 2: Show a list of assessments for a specific class.
-Route::get('gradebook/classes/{classSection}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
-
-// Page 3: Show the final results for a specific class and assessment.
-Route::get('gradebook/classes/{classSection}/assessments/{assessment}', [GradebookController::class, 'showResults'])->name('gradebook.results');
-
-// === END: REVISED GRADEBOOK ROUTES ===
-
-    // Import/Export Routes
-    Route::get('/grades/import', [BulkGradeController::class, 'showImportForm'])->name('grades.import.show');
-    Route::post('/grades/import', [BulkGradeController::class, 'handleImport'])->name('grades.import.handle');
-
-    // Bulk Grade Entry Routes
-    Route::get('/grades/bulk', [BulkGradeController::class, 'create'])->name('grades.bulk.create');
-    Route::post('/grades/bulk/show', [BulkGradeController::class, 'show'])->name('grades.bulk.show');
+    // Bulk (Grid) Grade Entry flow
+    Route::get('/grades/bulk/show/{classSection}/{assessment}', [BulkGradeController::class, 'show'])->name('grades.bulk.show');
     Route::post('/grades/bulk/store', [BulkGradeController::class, 'store'])->name('grades.bulk.store');
+
+    // Single Result Edit flow
+    Route::get('/results/{result}/edit', [TeacherResultController::class, 'edit'])->name('results.edit');
+    Route::put('/results/{result}', [TeacherResultController::class, 'update'])->name('results.update');
+
+    // Old routes that you might still need or can be removed later
+    // Route::get('/grades/import', [BulkGradeController::class, 'showImportForm'])->name('grades.import.show');
+    // Route::post('/grades/import', [BulkGradeController::class, 'handleImport'])->name('grades.import.handle');
+    // Route::get('/grades/bulk', [BulkGradeController::class, 'create'])->name('grades.bulk.create'); // This is now obsolete
     
-    // Legacy single-entry routes
-    Route::get('/classes/{classSection}/grades', [GradeController::class, 'enterGrades'])->name('grades.enter');
-    Route::post('/classes/{classSection}/grades', [GradeController::class, 'storeGrades'])->name('grades.store');
 });
 
 // Student Routes

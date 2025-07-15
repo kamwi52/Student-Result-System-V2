@@ -15,15 +15,15 @@
                     <h3 class="text-2xl font-bold mb-4">Class: {{ $classSection->name }}</h3>
                     <div class="divide-y divide-gray-200 dark:divide-gray-700">
                         @forelse($assessments as $assessment)
-                            {{-- This link goes to the final results page --}}
                             <a href="{{ route('teacher.gradebook.results', ['classSection' => $classSection->id, 'assessment' => $assessment->id]) }}" class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                <div class="font-bold text-lg">{{ $assessment->title }}</div>
+                                {{-- === THE FIX: Use 'name' and show the subject too === --}}
+                                <div class="font-bold text-lg">{{ $assessment->subject->name ?? 'Subject' }}: {{ $assessment->name }}</div>
                                 <div class="text-sm text-gray-600 dark:text-gray-400">
                                     Date: {{ \Carbon\Carbon::parse($assessment->assessment_date)->format('M d, Y') }}
                                 </div>
                             </a>
                         @empty
-                            <p>There are no assessments for this class.</p>
+                            <p>There are no assessments for this class's subjects.</p>
                         @endforelse
                     </div>
                 </div>

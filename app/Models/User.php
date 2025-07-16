@@ -2,26 +2,15 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-// Import the correct models
-use App\Models\Result;
-use App\Models\Enrollment;
-use App\Models\ClassSection;
-
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -29,23 +18,11 @@ class User extends Authenticatable
         'role',
         'email_verified_at',
         'student_id',
+        'profile_photo_path',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -54,37 +31,24 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Get the results for the student.
-     */
+    // --- Student-specific relationships ---
     public function results(): HasMany
     {
-        return $this->hasMany(Result::class, 'student_id');
-    }
-    
-    /**
-     * Get the classes that a user (as a teacher) is assigned to.
-     */
-    public function classes(): HasMany
-    {
-        return $this->hasMany(ClassSection::class, 'teacher_id');
+        return $this->hasMany(Result::class, 'user_id');
     }
 
-    /**
-     * === FIX FOR "Enter Grades" BUTTON ===
-     * An alias relationship to support older controllers that call classSections().
-     * This forwards the call to the correct 'classes()' method.
-     */
-    public function classSections(): HasMany
-    {
-        return $this->classes();
-    }
-
-    /**
-     * The enrollments for a user (student).
-     */
     public function enrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class, 'student_id');
+        return $this->hasMany(Enrollment::class, 'user_id');
+    }
+
+    // === NEW RELATIONSHIP FOR TEACHERS ===
+    /**
+     * Get all assignments for this user (as a teacher).
+     * An assignment is a specific subject in a specific class.
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
     }
 }

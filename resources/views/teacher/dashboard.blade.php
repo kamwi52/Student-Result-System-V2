@@ -7,6 +7,9 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            {{-- This component will display any success messages after saving grades --}}
+            <x-success-message />
+
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
@@ -17,18 +20,13 @@
                         From here you can manage grades and view results for the classes you are assigned to.
                     </p>
 
-                    {{-- Action Buttons --}}
-                    <div class="mt-4 flex flex-wrap gap-4">
-                        {{-- Link to the Bulk Grade Entry Feature --}}
-                        <a href="{{ route('teacher.grades.bulk.create') }}"
-                           class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-md font-semibold text-sm text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150">
-                            Enter Grades (Grid View)
-                        </a>
-                        
-                        {{-- === THE NEW LINK TO THE GRADEBOOK === --}}
+                    {{-- === THE FIX: A SINGLE, UNIFIED BUTTON === --}}
+                    {{-- This one button is the only entry point the teacher needs now. --}}
+                    {{-- It points to the new, working gradebook workflow. --}}
+                    <div class="mt-4">
                         <a href="{{ route('teacher.gradebook.index') }}"
-                           class="inline-flex items-center px-6 py-3 bg-green-600 border border-transparent rounded-md font-semibold text-sm text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150">
-                            View Gradebook (By Assessment)
+                           class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-md font-semibold text-sm text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150">
+                            Open Gradebook
                         </a>
                     </div>
 

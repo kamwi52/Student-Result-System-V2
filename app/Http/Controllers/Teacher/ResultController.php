@@ -4,33 +4,31 @@ namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
 use App\Models\Result;
+use App\Models\Assignment;
 use App\Models\ClassSection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Arr;
 
 class ResultController extends Controller
 {
     /**
      * Show the form for editing a single result.
+     * MODIFIED: Receives an Assignment for context.
      */
-    public function edit(Result $result)
+    public function edit(Assignment $assignment, Result $result)
     {
-        // Security Check: Ensure the logged-in teacher is assigned to the class
-        // where this assessment was given.
-        $assessment = $result->load('assessment.subject.classes')->assessment;
-        $teacherClassIds = Auth::user()->classes()->pluck('id');
-        
-        $isAuthorized = $assessment->subject->classes->whereIn('id', $teacherClassIds)->isNotEmpty();
-
-        if (!$isAuthorized) {
+        // Security Check 1: Ensure the logged-in teacher owns this assignment.
+        if ($assignment->user_id !== Auth::id()) {
             abort(403, 'Unauthorized Action');
         }
 
-        // We need the classSection for the "Back" button URL.
-        // We can get it from the relationships we just loaded.
-        $classSection = $assessment->subject->classes->whereIn('id', $teacherClassIds)->first();
+        // Security Check 2: Make sure the result being edited actually belongs to this assignment's subject.
+        if ($result->assessment->subject_id !== $assignment->subject_id) {
+            abort(403, 'Result does not match assignment subject.');
+        }
 
-        return view('teacher.results.edit', compact('result', 'classSection'));
+        return view('teacher.results.edit', compact('assignment', 'result'));
     }
 
     /**
@@ -38,26 +36,39 @@ class ResultController extends Controller
      */
     public function update(Request $request, Result $result)
     {
-        // Reuse the same security check from the edit method.
-        $assessment = $result->load('assessment.subject')->assessment;
-        $teacherClassIds = Auth::user()->classes()->pluck('id');
-        $isAuthorized = $assessment->subject->classes->whereIn('id', $teacherClassIds)->isNotEmpty();
-
-        if (!$isAuthorized) {
-            abort(403, 'Unauthorized Action');
-        }
-
         $validated = $request->validate([
             'score' => 'required|numeric|min:0|max:100',
-            'remark' => 'nullable|string|max:255',
-            'class_section_id' => 'required|exists:class_sections,id' // For redirecting
+            // remark is now auto-generated, so no longer in validation
+            'assignment_id' => 'required|exists:assignments,id' // For security and redirect
         ]);
 
-        $result->update($validated);
+        $assignment = Assignment::find($validated['assignment_id']);
 
-        // Redirect back to the main results page
+        // Security Check
+        if ($assignment->user_id !== Auth::id() || $result->assessment->subject_id !== $assignment->subject_id) {
+            abort(403, 'Unauthorized Action');
+        }
+        
+        $score = $validated['score'];
+        $remark = null;
+
+        // Auto-remark logic
+        $classSection = $assignment->classSection()->with('gradingScale.grades')->first();
+        if ($classSection && $classSection->gradingScale) {
+            $grade = $classSection->gradingScale->getGradeFromScore($score);
+            if ($grade) {
+                $remark = $grade->remark;
+            }
+        }
+        
+        $result->update([
+            'score' => $score,
+            'remark' => $remark,
+        ]);
+
+        // Redirect back to the main results page for the assignment
         return redirect()->route('teacher.gradebook.results', [
-            'classSection' => $validated['class_section_id'],
+            'assignment' => $validated['assignment_id'],
             'assessment' => $result->assessment_id
         ])->with('success', 'Grade updated successfully.');
     }

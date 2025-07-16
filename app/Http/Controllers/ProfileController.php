@@ -24,38 +24,35 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    // In ProfileController.php
-
-public function update(ProfileUpdateRequest $request): RedirectResponse
-{
-    $user = $request->user();
-    
-    // Fill the user model with validated data (name, email)
-    $user->fill($request->validated());
-
-    // If the email was changed, reset the verification status
-    if ($user->isDirty('email')) {
-        $user->email_verified_at = null;
-    }
-
-    // === NEW: HANDLE AVATAR UPLOAD ===
-    if ($request->hasFile('avatar')) {
-        $request->validate([
-            'avatar' => ['image', 'mimes:jpg,jpeg,png', 'max:2048'], // 2MB max
-        ]);
-
-        // Store the file in 'public/avatars' and get its path
-        $path = $request->file('avatar')->store('avatars', 'public');
+    public function update(ProfileUpdateRequest $request): RedirectResponse
+    {
+        $user = $request->user();
         
-        // Save the path to the user's avatar column
-        $user->avatar = $path;
+        // Fill the user model with validated data (name, email)
+        $user->fill($request->validated());
+
+        // If the email was changed, reset the verification status
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        // === CORRECTED: HANDLE PHOTO UPLOAD ===
+        if ($request->hasFile('photo')) {
+            // This validation can be moved to ProfileUpdateRequest if desired
+            $request->validate(['photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048']]);
+
+            // Store the file in 'public/profile-photos' and get its path
+            $path = $request->file('photo')->store('profile-photos', 'public');
+            
+            // Save the path to the user's `profile_photo_path` column
+            $user->profile_photo_path = $path;
+        }
+        // ===================================
+
+        $user->save();
+
+        return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
-    // ===================================
-
-    $user->save();
-
-    return Redirect::route('profile.edit')->with('status', 'profile-updated');
-}
 
     /**
      * Delete the user's account.
@@ -67,11 +64,8 @@ public function update(ProfileUpdateRequest $request): RedirectResponse
         ]);
 
         $user = $request->user();
-
         Auth::logout();
-
         $user->delete();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

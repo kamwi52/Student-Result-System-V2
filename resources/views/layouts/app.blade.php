@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
-        <meta charset="utf-g">
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -33,7 +33,7 @@
             </main>
         </div>
 
-        {{-- === THE FIX: Add this line to render page-specific scripts === --}}
-        @yield('scripts')
+        {{-- === THE FIX: Use @stack('scripts') to render all pushed scripts === --}}
+        @stack('scripts')
     </body>
 </html>

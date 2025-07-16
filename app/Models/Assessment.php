@@ -12,20 +12,21 @@ class Assessment extends Model
 
     /**
      * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * An assessment is not tied to a single class, but to a subject.
+     * Therefore, 'class_id' should not be here.
      */
     protected $fillable = [
         'name',
         'subject_id',
-        'class_id', // <-- 1. ADD class_id TO MAKE IT SAVEABLE
         'academic_session_id',
         'max_marks',
         'weightage',
+        'assessment_date', // Added for correctness
     ];
 
     /**
      * Get the subject that this assessment belongs to.
+     * This is the crucial relationship for the dropdown to work.
      */
     public function subject(): BelongsTo
     {
@@ -38,18 +39,5 @@ class Assessment extends Model
     public function academicSession(): BelongsTo
     {
         return $this->belongsTo(AcademicSession::class);
-    }
-
-    /**
-     * =========================================================
-     *  2. DEFINE THE NEW RELATIONSHIP TO THE CLASS
-     * =========================================================
-     * Get the class section that this assessment belongs to.
-     */
-    public function classSection(): BelongsTo
-    {
-        // This tells Laravel that an Assessment belongs to a ClassSection,
-        // and the link is stored in the 'class_id' column.
-        return $this->belongsTo(ClassSection::class, 'class_id');
     }
 }

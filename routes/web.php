@@ -54,8 +54,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
     
-    // === THE FIX: All specific import/export routes are defined here, BEFORE the resource routes ===
-    // --- Specific Routes First ---
+    // --- Specific Non-Resourceful Routes ---
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.handleImport');
     
@@ -71,9 +70,9 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
     Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
 
-    Route::get('/results/import', [AdminResultController::class, 'showImportForm'])->name('results.import.show');
-    Route::post('/results/import', [AdminResultController::class, 'handleImport'])->name('results.import.handle');
-    // ==============================================================================================
+    Route::get('/results/import/step-1', [AdminResultController::class, 'showImportStep1'])->name('results.import.step1');
+    Route::get('/results/import/step-2', [AdminResultController::class, 'showImportStep2'])->name('results.import.step2');
+    Route::post('/results/import/handle', [AdminResultController::class, 'handleImport'])->name('results.import.handle');
 
     // --- Resourceful Routes Last ---
     Route::resource('users', UserController::class);
@@ -87,25 +86,18 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
 // Teacher Routes
 Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
-
-    // === UNIFIED GRADEBOOK AND GRADE ENTRY ROUTES ===
-
-    // Main "Drill-Down" Gradebook flow
     Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
     Route::get('gradebook/assignments/{assignment}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
     Route::get('gradebook/assignments/{assignment}/assessments/{assessment}', [GradebookController::class, 'showResults'])->name('gradebook.results');
-
-    // Bulk (Grid) Grade Entry flow
     Route::get('/assignments/{assignment}/assessment/{assessment}/bulk-edit', [BulkGradeController::class, 'show'])->name('grades.bulk.show');
     Route::post('/grades/bulk/store', [BulkGradeController::class, 'store'])->name('grades.bulk.store');
-
-    // Single Result Edit flow
     Route::get('/assignments/{assignment}/results/{result}/edit', [TeacherResultController::class, 'edit'])->name('results.edit');
     Route::put('/results/{result}', [TeacherResultController::class, 'update'])->name('results.update');
 });
 
 // Student Routes
 Route::middleware(['auth'])->prefix('student')->name('student.')->group(function () {
+    // === THE FIX: Changed the period to double colons ===
     Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
     Route::get('/classes/{classSection}/results', [StudentDashboardController::class, 'showResults'])->name('class.results');
 });

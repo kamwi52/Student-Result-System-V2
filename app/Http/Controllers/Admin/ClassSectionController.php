@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClassSection;
-use App\Models\Subject;
-use App\Models\User;
+use App\Models\Subject; // Make sure this is imported
+use App\Models\User; // Make sure this is imported
 use App\Models\AcademicSession;
 use App\Models\GradingScale;
 use Illuminate\Http\Request;
@@ -23,24 +23,30 @@ class ClassSectionController extends Controller
     {
         // Eager load relationships and add a count for enrolled students
         $classes = ClassSection::with(['academicSession', 'subjects'])
-                                ->withCount('students') // <-- ADD THIS LINE
+                                ->withCount('students')
                                 ->latest()
                                 ->paginate(10);
 
         return view('admin.classes.index', compact('classes'));
     }
 
-    // ... (rest of your controller methods remain unchanged) ...
-
+    /**
+     * Show the form for creating a new resource.
+     */
     public function create(): View
     {
         $subjects = Subject::orderBy('name')->get();
         $academicSessions = AcademicSession::orderBy('name', 'desc')->get();
         $gradingScales = GradingScale::orderBy('name')->get();
-        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        // Teachers are not strictly needed on the create page anymore for assignments,
+        // but included for consistency if general class teachers are managed here.
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get(); 
         return view('admin.classes.create', compact('subjects', 'academicSessions', 'gradingScales', 'teachers'));
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -60,51 +66,79 @@ class ClassSectionController extends Controller
         return redirect()->route('admin.classes.index')->with('success', 'Class created successfully. You can now edit it to assign teachers to subjects.');
     }
 
+    /**
+     * Show the form for editing the specified resource.
+     * === THIS IS THE CORRECTED METHOD FOR QUALIFIED TEACHERS ===
+     */
     public function edit(ClassSection $classSection): View
     {
-        $subjects = Subject::orderBy('name')->get();
-        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        // === FIX: Ensure all subjects are fetched and passed ===
+        $subjects = Subject::orderBy('name')->get(); 
+
+        // Load teachers with their qualified subjects for dynamic filtering in the view
+        $teachers = User::where('role', 'teacher')->with('qualifiedSubjects')->orderBy('name')->get();
+        
         $academicSessions = AcademicSession::orderBy('name', 'desc')->get();
         $gradingScales = GradingScale::orderBy('name')->get();
 
-        $classSection->load('subjects', 'teachers');
+        // Eager load class's assigned subjects (with pivot data) for current selections
+        $classSection->load(['subjects' => function($query) {
+            $query->withPivot('teacher_id'); // Ensure teacher_id is loaded from pivot table
+        }]);
 
+        // Pass all necessary variables to the view
         return view('admin.classes.edit', compact(
             'classSection', 
-            'subjects', 
+            'subjects', // Make sure $subjects is in compact()
             'teachers', 
             'academicSessions', 
             'gradingScales'
         ));
     }
 
+    /**
+     * Update the specified resource in storage.
+     * === THIS METHOD HAS BEEN UPDATED WITH THE FIX ===
+     */
     public function update(Request $request, ClassSection $classSection)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'grading_scale_id' => 'required|exists:grading_scales,id',
-            'subjects' => 'nullable|array',
+            'subjects' => 'nullable|array', // This will come from the subject multi-select box
             'subjects.*' => 'exists:subjects,id',
-            'assignments' => 'nullable|array',
+            'assignments' => 'nullable|array', // This will come from the teacher dropdowns
             'assignments.*' => 'nullable|exists:users,id',
         ]);
         
         $classSection->update($request->only('name', 'academic_session_id', 'grading_scale_id'));
     
-        $classSection->subjects()->sync($validated['subjects'] ?? []);
-        
+        // --- THIS IS THE CORRECTED LOGIC ---
+        // We will build a sync array with teacher IDs first, then sync all at once.
+        $syncData = [];
         if (isset($validated['assignments'])) {
             foreach ($validated['assignments'] as $subjectId => $teacherId) {
-                $classSection->subjects()->updateExistingPivot($subjectId, [
-                    'teacher_id' => $teacherId,
-                ]);
+                // Ensure the subject was actually selected in the 'subjects' array
+                if (in_array($subjectId, $validated['subjects'] ?? [])) {
+                    // Check if the teacherId is valid (not null, not 0). If not, force it to be null.
+                    $validTeacherId = ($teacherId && (int)$teacherId > 0) ? (int)$teacherId : null;
+                    $syncData[$subjectId] = ['teacher_id' => $validTeacherId];
+                }
             }
         }
+
+        // Now, sync the subjects and their assigned teachers in a single, efficient operation.
+        // This handles adding new subjects, removing unchecked subjects, and updating teacher assignments.
+        $classSection->subjects()->sync($syncData);
+        // --- END CORRECTED LOGIC ---
         
         return redirect()->route('admin.classes.index')->with('success', 'Class and assignments updated successfully.');
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy(ClassSection $classSection)
     {
         if ($classSection->enrollments()->exists() || $classSection->assignments()->exists()) {
@@ -117,11 +151,17 @@ class ClassSectionController extends Controller
         return redirect()->route('admin.classes.index')->with('success', 'Class deleted successfully.');
     }
 
+    /**
+     * Display the form for uploading a class import file.
+     */
     public function showImportForm(): View
     {
         return view('admin.classes.import');
     }
 
+    /**
+     * Process the uploaded CSV file to import classes.
+     */
     public function handleImport(Request $request)
     {
         $request->validate([

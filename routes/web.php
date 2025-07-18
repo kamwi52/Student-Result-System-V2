@@ -19,6 +19,7 @@ use App\Http\Controllers\Teacher\ResultController as TeacherResultController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Admin\AcademicSessionController; // <-- ADD THIS IMPORT
 
 /*
 |--------------------------------------------------------------------------
@@ -77,21 +78,36 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
 
-    // --- Resourceful Routes Last (to avoid route conflicts) ---
+    // --- Resourceful Routes ---
     Route::resource('users', UserController::class);
     Route::resource('subjects', SubjectController::class);
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
     Route::resource('assessments', AssessmentController::class);
     Route::resource('results', AdminResultController::class);
     Route::resource('grading-scales', GradingScaleController::class);
+    
+    // Academic Session Routes (ADD THIS LINE)
+    Route::resource('academic-sessions', AcademicSessionController::class); 
 });
 
 // Teacher Routes
 Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
+    
+    // === UPDATED GRADEBOOK ROUTES ===
+
+    // Main Gradebook page: Shows list of Class-Subject pairs the teacher teaches
     Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
-    Route::get('gradebook/assignments/{assignment}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
+    
+    // Page to view assignments for a specific Class & Subject combo
+    // Parameters are ClassSection and Subject, not Assignment directly
+    Route::get('gradebook/{classSection}/{subject}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
+    
+    // Page to view results/grades for a specific assignment and assessment template
+    // This route remains as is, but the link TO it from showAssessments will change.
     Route::get('gradebook/assignments/{assignment}/assessments/{assessment}', [GradebookController::class, 'showResults'])->name('gradebook.results');
+
+
     Route::get('/assignments/{assignment}/assessment/{assessment}/bulk-edit', [BulkGradeController::class, 'show'])->name('grades.bulk.show');
     Route::post('/grades/bulk/store', [BulkGradeController::class, 'store'])->name('grades.bulk.store');
     Route::get('/assignments/{assignment}/results/{result}/edit', [TeacherResultController::class, 'edit'])->name('results.edit');

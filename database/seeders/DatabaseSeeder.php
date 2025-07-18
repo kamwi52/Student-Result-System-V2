@@ -47,9 +47,18 @@ class DatabaseSeeder extends Seeder
         );
 
         // === Call Other Seeders ===
+        // This is where we call all other specific seeders.
         $this->call([
             GradingScaleSeeder::class,
             AcademicSessionSeeder::class,
+            SubjectSeeder::class, // <-- ADD THIS CRUCIAL LINE
+            TeacherSubjectQualificationSeeder::class,
         ]);
+        //
+        // You might also want to add factories for dummy data if you use them:
+        // \App\Models\ClassSection::factory(10)->create();
+        // \App\Models\User::factory(5)->create(['role' => 'teacher']);
+        // \App\Models\User::factory(20)->create(['role' => 'student']);
+        //
     }
 }

@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'email_verified_at', 'profile_photo_path', // Removed 'student_id' as it's not a general user attribute
+        'name', 'email', 'password', 'role', 'email_verified_at', 'profile_photo_path',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -53,5 +53,14 @@ class User extends Authenticatable
     public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class, 'teacher_id'); // Assuming 'teacher_id' is the foreign key in the 'assignments' table
+    }
+
+    /**
+     * === NEW: Get the subjects this user (teacher) is qualified to teach. ===
+     */
+    public function qualifiedSubjects(): BelongsToMany
+    {
+        // This links to the 'subject_user' pivot table
+        return $this->belongsToMany(Subject::class, 'subject_user', 'user_id', 'subject_id');
     }
 }

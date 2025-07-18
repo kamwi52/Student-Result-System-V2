@@ -4,36 +4,42 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany; // Make sure this is present
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subject extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'code'];
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = ['name', 'code']; // Assuming 'code' is also a fillable field for subjects
 
     /**
-     * The assessments that belong to the subject.
+     * The assignments that belong to this subject.
      */
-    public function assessments(): HasMany
+    public function assignments(): HasMany
     {
-        return $this->hasMany(Assessment::class);
+        return $this->hasMany(Assignment::class);
     }
     
     /**
      * The classes that teach this subject.
      */
-    public function classes(): BelongsToMany
+    public function classSections(): BelongsToMany
     {
         return $this->belongsToMany(ClassSection::class, 'class_section_subject');
     }
 
     /**
-     * === NEW: Get all assignments for this subject. ===
+     * Get the teachers who are qualified to teach this subject.
+     * This links to the 'subject_user' pivot table.
      */
-    public function assignments(): HasMany
+    public function qualifiedTeachers(): BelongsToMany
     {
-        return $this->hasMany(Assignment::class);
+        return $this->belongsToMany(User::class, 'subject_user', 'subject_id', 'user_id');
     }
 }

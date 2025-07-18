@@ -30,6 +30,10 @@
                                     <x-dropdown-link :href="route('admin.grading-scales.index')" :active="request()->routeIs('admin.grading-scales.*')">Grading Scales</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">User Management</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.subjects.index')" :active="request()->routeIs('admin.subjects.*')">Subject Management</x-dropdown-link>
+                                    {{-- ADD THIS LINK FOR DESKTOP --}}
+                                    <x-dropdown-link :href="route('admin.academic-sessions.index')" :active="request()->routeIs('admin.academic-sessions.*')">
+                                        {{ __('Academic Session Management') }}
+                                    </x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.classes.index')" :active="request()->routeIs('admin.classes.*')">Class Management</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.assessments.index')" :active="request()->routeIs('admin.assessments.*')">Assessment Management</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.results.index')" :active="request()->routeIs('admin.results.*')">Result Management</x-dropdown-link>
@@ -75,6 +79,55 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         {{-- You'll likely want to add similar conditional logic for the responsive menu's avatar as well --}}
-        {{-- ... (your existing responsive menu code) ... --}}
+        <div class="pt-2 pb-3 space-y-1">
+            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                {{ __('Dashboard') }}
+            </x-responsive-nav-link>
+
+            @if(Auth::user()->role === 'admin')
+                <x-responsive-nav-link :href="route('admin.grading-scales.index')" :active="request()->routeIs('admin.grading-scales.*')">Grading Scales</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">User Management</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.subjects.index')" :active="request()->routeIs('admin.subjects.*')">Subject Management</x-responsive-nav-link>
+                {{-- ADD THIS LINK FOR RESPONSIVE (MOBILE) --}}
+                <x-responsive-nav-link :href="route('admin.academic-sessions.index')" :active="request()->routeIs('admin.academic-sessions.*')">
+                    {{ __('Academic Session Management') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.classes.index')" :active="request()->routeIs('admin.classes.*')">Class Management</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.assessments.index')" :active="request()->routeIs('admin.assessments.*')">Assessment Management</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.results.index')" :active="request()->routeIs('admin.results.*')">Result Management</x-responsive-nav-link>
+            @endif
+        </div>
+        
+        <!-- Responsive Settings Options -->
+        <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
+            <div class="flex items-center px-4">
+                {{-- Conditional Avatar for Responsive Menu --}}
+                @if (Auth::user()->profile_photo_path)
+                    <img class="h-8 w-8 rounded-full object-cover mr-2" src="{{ asset('storage/' . Auth::user()->profile_photo_path) }}" alt="{{ Auth::user()->name }}">
+                @else
+                    <img class="h-8 w-8 rounded-full object-cover mr-2" src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&color=7F9CF5&background=EBF4FF" alt="{{ Auth::user()->name }}">
+                @endif
+                <div class="ms-3">
+                    <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
+                    <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                </div>
+            </div>
+
+            <div class="mt-3 space-y-1">
+                <x-responsive-nav-link :href="route('profile.edit')">
+                    {{ __('Profile') }}
+                </x-responsive-nav-link>
+
+                <!-- Authentication -->
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <x-responsive-nav-link :href="route('logout')"
+                            onclick="event.preventDefault();
+                                        this.closest('form').submit();">
+                        {{ __('Log Out') }}
+                    </x-responsive-nav-link>
+                </form>
+            </div>
+        </div>
     </div>
 </nav>

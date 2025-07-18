@@ -53,33 +53,36 @@ Route::middleware('auth')->group(function () {
 // Admin Routes
 Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
-    
+
     // --- Specific Non-Resourceful Routes ---
+
+    // Import Routes
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.handleImport');
     
-    Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
-    Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
+    Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
+    Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
+    
+    Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
+    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
     
     Route::get('/assessments/import', [AssessmentController::class, 'showImportForm'])->name('assessments.import.show');
     Route::post('/assessments/import', [AssessmentController::class, 'handleImport'])->name('assessments.import.handle');
-    
-    Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
-    Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
-
-    Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
-    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
 
     Route::get('/results/import/step-1', [AdminResultController::class, 'showImportStep1'])->name('results.import.step1');
     Route::get('/results/import/step-2', [AdminResultController::class, 'showImportStep2'])->name('results.import.step2');
     Route::post('/results/import/handle', [AdminResultController::class, 'handleImport'])->name('results.import.handle');
 
-    // --- Resourceful Routes Last ---
+    // Other Specific Routes
+    Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
+    Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
+
+    // --- Resourceful Routes Last (to avoid route conflicts) ---
     Route::resource('users', UserController::class);
     Route::resource('subjects', SubjectController::class);
+    Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
     Route::resource('assessments', AssessmentController::class);
     Route::resource('results', AdminResultController::class);
-    Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
     Route::resource('grading-scales', GradingScaleController::class);
 });
 
@@ -97,7 +100,6 @@ Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->
 
 // Student Routes
 Route::middleware(['auth'])->prefix('student')->name('student.')->group(function () {
-    // === THE FIX: Changed the period to double colons ===
     Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
     Route::get('/classes/{classSection}/results', [StudentDashboardController::class, 'showResults'])->name('class.results');
 });

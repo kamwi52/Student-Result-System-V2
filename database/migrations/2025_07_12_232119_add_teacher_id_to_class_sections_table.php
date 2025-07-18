@@ -11,11 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Use Schema::table() to modify an existing table
         Schema::table('class_sections', function (Blueprint $table) {
-            // We add the foreign key for the teacher.
-            // It's nullable in case a class can exist without a teacher temporarily.
-            // The 'after' method is just for organization in the database table.
-            $table->foreignId('teacher_id')->nullable()->constrained('users')->after('academic_session_id');
+            $table->foreignId('teacher_id')
+                  ->nullable() // Allows the "Unassigned" option
+                  ->constrained('users') // Links to the 'id' on the 'users' table
+                  ->onDelete('set null'); // If a teacher is deleted, set this class's teacher_id to NULL
         });
     }
 
@@ -25,7 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('class_sections', function (Blueprint $table) {
-            // This will properly remove the column and its foreign key.
+            // Important to properly define how to drop the foreign key
             $table->dropForeign(['teacher_id']);
             $table->dropColumn('teacher_id');
         });

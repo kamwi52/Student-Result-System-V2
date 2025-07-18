@@ -5,39 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Assignment extends Model
 {
     use HasFactory;
 
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
-    protected $table = 'assignments';
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        'class_section_id',
+        'name',
+        'class_section_id', // <-- ADD THIS LINE
         'subject_id',
-        'user_id', // The teacher's ID
+        'teacher_id',
+        'academic_session_id',
+        'max_marks',
+        'weightage',
+        'assessment_date',
     ];
 
     /**
-     * Get the teacher (a User) for this assignment.
-     */
-    public function teacher(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    /**
-     * Get the class for this assignment.
+     * An Assignment belongs to one ClassSection.
      */
     public function classSection(): BelongsTo
     {
@@ -45,10 +31,32 @@ class Assignment extends Model
     }
 
     /**
-     * Get the subject for this assignment.
+     * An Assignment belongs to one Subject.
      */
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);
+    }
+
+    /**
+     * The teacher who owns this assignment.
+     */
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    /**
+     * An assignment can have many results (one for each student).
+     */
+    public function results(): HasMany
+    {
+        return $this->hasMany(Result::class);
+    }
+    
+    // If you also link AcademicSession directly to Assignment:
+    public function academicSession(): BelongsTo
+    {
+        return $this->belongsTo(AcademicSession::class);
     }
 }

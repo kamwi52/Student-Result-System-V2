@@ -20,9 +20,10 @@ class AssessmentController extends Controller
      */
     public function index(): View
     {
-        $assessments = Assessment::with(['subject', 'assignment.classSection', 'assignment.teacher'])
-                                 ->latest()
-                                 ->paginate(10);
+        $assessments = Assessment::with(['subject', 'assignment', 'assignment.classSection', 'assignment.teacher'])
+            ->latest()
+            ->paginate(10);
+
         return view('admin.assessments.index', compact('assessments'));
     }
 
@@ -40,33 +41,47 @@ class AssessmentController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     * REDESIGNED to create both Assessment and Assignment.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'max_marks' => 'required|numeric|min:0',
-            'weightage' => 'required|numeric|min:0|max:100',
+            'weightage' => 'nullable|numeric|min:0|max:100',
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'subject_id' => 'required|exists:subjects,id',
             'assessment_date' => 'required|date',
-            'teacher_id' => 'nullable|exists:users,id',
+            'teacher_id' => 'required|exists:users,id',
             'class_section_id' => 'required|exists:class_sections,id',
+            'title' => 'required|string|max:255',  // Assignment title
         ]);
 
         DB::transaction(function () use ($validated) {
             // 1. Create the Assessment
-            $assessment = Assessment::create($validated);
+            $assessment = Assessment::create([
+                'name' => $validated['name'],
+                'subject_id' => $validated['subject_id'],
+                'academic_session_id' => $validated['academic_session_id'],
+                'max_marks' => $validated['max_marks'],
+                'weightage' => $validated['weightage'],
+                'assessment_date' => $validated['assessment_date'],
+                'class_section_id' => $validated['class_section_id'],
+            ]);
 
-            // 2. Prepare data and create the linked Assignment
-            $assignmentData = array_merge($validated, ['assessment_id' => $assessment->id]);
-            Assignment::create($assignmentData);
+            // 2. Create the linked Assignment
+            $assignment = new Assignment([
+                'title' => $validated['title'],
+                'subject_id' => $validated['subject_id'],
+                'class_section_id' => $validated['class_section_id'],
+                'teacher_id' => $validated['teacher_id'],
+                'assessment_id' => $assessment->id,
+            ]);
+            $assessment->assignment()->save($assignment);
         });
 
         return redirect()->route('admin.assessments.index')->with('success', 'Assessment created successfully.');
     }
-    
+
     /**
      * Show the form for editing the specified resource.
      */
@@ -83,31 +98,54 @@ class AssessmentController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * REDESIGNED to update both Assessment and Assignment.
      */
     public function update(Request $request, Assessment $assessment)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'max_marks' => 'required|numeric|min:0',
-            'weightage' => 'required|numeric|min:0|max:100',
+            'weightage' => 'nullable|numeric|min:0|max:100',
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'subject_id' => 'required|exists:subjects,id',
             'assessment_date' => 'required|date',
-            'teacher_id' => 'nullable|exists:users,id',
+            'teacher_id' => 'required|exists:users,id',
             'class_section_id' => 'required|exists:class_sections,id',
+            'title' => 'required|string|max:255',  // Assignment title
         ]);
 
         DB::transaction(function () use ($validated, $assessment) {
             // 1. Update the Assessment
-            $assessment->update($validated);
+            $assessment->update([
+                'name' => $validated['name'],
+                'subject_id' => $validated['subject_id'],
+                'academic_session_id' => $validated['academic_session_id'],
+                'max_marks' => $validated['max_marks'],
+                'weightage' => $validated['weightage'],
+                'assessment_date' => $validated['assessment_date'],
+                'class_section_id' => $validated['class_section_id'],
+            ]);
 
-            // 2. Update the linked Assignment
-            // If an assignment doesn't exist for some reason, create it.
-            $assessment->assignment()->updateOrCreate(
-                ['assessment_id' => $assessment->id],
-                $validated
-            );
+            // 2. Update or Create the linked Assignment
+            // Check if the assignment exists.
+            if ($assessment->assignment) {
+                //Update if it exists.
+                $assessment->assignment()->update([
+                    'title' => $validated['title'],
+                    'subject_id' => $validated['subject_id'],
+                    'class_section_id' => $validated['class_section_id'],
+                    'teacher_id' => $validated['teacher_id'],
+                ]);
+            } else {
+                //Create if it does not exist.
+                $assignment = new Assignment([
+                    'title' => $validated['title'],
+                    'subject_id' => $validated['subject_id'],
+                    'class_section_id' => $validated['class_section_id'],
+                    'teacher_id' => $validated['teacher_id'],
+                    'assessment_id' => $assessment->id,
+                ]);
+                $assessment->assignment()->save($assignment);
+            }
         });
 
         return redirect()->route('admin.assessments.index')->with('success', 'Assessment updated successfully.');
@@ -115,17 +153,14 @@ class AssessmentController extends Controller
 
     /**
      * Remove the specified resource from storage.
-     * REDESIGNED to delete both Assessment and linked Assignment.
      */
     public function destroy(Assessment $assessment)
     {
-        // Deleting the Assessment will automatically delete the linked Assignment
-        // because of the onDelete('cascade') we set in the migration.
+        // Because of the HasOne relationship, the linked assignment might need
+        // to be deleted manually if you didn't set up cascading deletes in the migration.
+        // Assuming you have set `onDelete('cascade')` in your migration, this is fine.
         $assessment->delete();
 
         return redirect()->route('admin.assessments.index')->with('success', 'Assessment deleted successfully.');
     }
-
-    // ... your import methods can stay as they are, but you will need to adjust them
-    // to create both an Assessment and an Assignment for each imported row.
 }

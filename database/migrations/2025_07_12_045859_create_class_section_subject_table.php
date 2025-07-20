@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // This is our new pivot table
         Schema::create('class_section_subject', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('class_section_id')->constrained('class_sections')->onDelete('cascade');
-            $table->foreignId('subject_id')->constrained('subjects')->onDelete('cascade');
-            $table->foreignId('teacher_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->timestamps();
+            $table->foreignId('class_section_id')->constrained()->onDelete('cascade');
+            $table->foreignId('subject_id')->constrained()->onDelete('cascade');
+            
+            // This composite primary key ensures a subject can only be added to a class once.
+            $table->primary(['class_section_id', 'subject_id']);
         });
     }
 

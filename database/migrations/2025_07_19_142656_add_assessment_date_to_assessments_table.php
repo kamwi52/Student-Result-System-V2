@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assessments', function (Blueprint $table) {
-            // Change the column to allow NULL values
-            $table->integer('weightage')->nullable()->change();
+            // Add a 'date' type column. It can be nullable if a date is not always required.
+            // The ->after() method is optional but keeps your schema organized.
+            $table->date('assessment_date')->nullable()->after('weightage');
         });
     }
 
@@ -23,8 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('assessments', function (Blueprint $table) {
-            // This changes it back if you ever need to undo
-            $table->integer('weightage')->nullable(false)->change();
+            // This will remove the column if you ever roll back the migration.
+            $table->dropColumn('assessment_date');
         });
     }
 };

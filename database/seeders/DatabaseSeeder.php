@@ -13,52 +13,39 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // === Create or Update the Admin User ===
-        User::updateOrCreate(
-            ['email' => 'east@test.com'], // The unique attribute to find the user by
-            [
-                'name' => 'east',
-                'email_verified_at' => now(),
-                'role' => 'admin',
-                'password' => Hash::make('password'),
-            ]
-        );
-
-        // === Create or Update the Teacher User ===
-        User::updateOrCreate(
-            ['email' => 'teach1@test.com'], // The unique attribute to find the user by
-            [
-                'name' => 'teach1',
-                'email_verified_at' => now(),
-                'role' => 'teacher',
-                'password' => Hash::make('password'),
-            ]
-        );
-
-        // === Create or Update the Student User ===
-        User::updateOrCreate(
-            ['email' => 'stude@test.com'], // The unique attribute to find the user by
-            [
-                'name' => 'student1',
-                'email_verified_at' => now(),
-                'role' => 'student',
-                'password' => Hash::make('password'),
-            ]
-        );
-
-        // === Call Other Seeders ===
-        // This is where we call all other specific seeders.
-        $this->call([
-            GradingScaleSeeder::class,
-            AcademicSessionSeeder::class,
-            SubjectSeeder::class, // <-- ADD THIS CRUCIAL LINE
-            TeacherSubjectQualificationSeeder::class,
+        // === Create the Admin User ===
+        User::create([
+            'name' => 'east',
+            'email' => 'east@test.com',
+            'email_verified_at' => now(), // Mark email as verified
+            'role' => 'admin',
+            'password' => Hash::make('password'),
         ]);
-        //
-        // You might also want to add factories for dummy data if you use them:
-        // \App\Models\ClassSection::factory(10)->create();
-        // \App\Models\User::factory(5)->create(['role' => 'teacher']);
-        // \App\Models\User::factory(20)->create(['role' => 'student']);
-        //
+
+        // === Create the Teacher User ===
+        User::create([
+            'name' => 'teach1',
+            'email' => 'teach1@test.com',
+            'email_verified_at' => now(), // Mark email as verified
+            'role' => 'teacher',
+
+            'password' => Hash::make('password'),
+        ]);
+
+        // === Create the Student User ===
+        User::create([
+            'name' => 'student1',
+            'email' => 'stude@test.com',
+            'email_verified_at' => now(), // Mark email as verified
+            'role' => 'student',
+            'password' => Hash::make('password'),
+        ]);
+
+        // You can create more users using factories if you wish
+        // User::factory(10)->create();
+
+        // === THE FIX: Call the GradingScaleSeeder ===
+        // This will run our new seeder to create the default grading systems.
+        $this->call(GradingScaleSeeder::class);
     }
 }

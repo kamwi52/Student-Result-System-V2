@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Assessment extends Model
@@ -13,7 +14,6 @@ class Assessment extends Model
 
     /**
      * The attributes that are mass assignable.
-     * An assessment is not tied to a single class, but to a subject.
      */
     protected $fillable = [
         'name',
@@ -22,11 +22,11 @@ class Assessment extends Model
         'max_marks',
         'weightage',
         'assessment_date',
+        'class_section_id',
     ];
 
     /**
      * An Assessment belongs to one Subject.
-     * This method tells Laravel how to find that subject.
      */
     public function subject(): BelongsTo
     {
@@ -42,18 +42,26 @@ class Assessment extends Model
     }
 
     /**
+     * An Assessment belongs to one ClassSection.
+     */
+    public function classSection(): BelongsTo
+    {
+        return $this->belongsTo(ClassSection::class);
+    }
+
+    /**
+     * An assessment has one assignment.
+     */
+    public function assignment(): HasOne
+    {
+        return $this->hasOne(Assignment::class);
+    }
+
+    /**
      * An assessment can have many results (one for each student).
      */
     public function results(): HasMany
     {
         return $this->hasMany(Result::class);
-    }
-
-    /**
-     * An assessment can be included in many class assignments.
-     */
-    public function assignments(): HasMany
-    {
-        return $this->hasMany(Assignment::class);
     }
 }

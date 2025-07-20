@@ -5,22 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+// We are now using HasMany instead of HasManyThrough
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Assignment extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     */
     protected $fillable = [
-        'name',
-        'class_section_id', // <-- ADD THIS LINE
+        'title',
         'subject_id',
+        'class_section_id',
         'teacher_id',
-        'academic_session_id',
-        'max_marks',
-        'weightage',
-        'assessment_date',
+        'assessment_id',
     ];
+
+    /**
+     * An Assignment belongs to one Assessment.
+     */
+    public function assessment(): BelongsTo
+    {
+        return $this->belongsTo(Assessment::class);
+    }
 
     /**
      * An Assignment belongs to one ClassSection.
@@ -47,16 +56,16 @@ class Assignment extends Model
     }
 
     /**
-     * An assignment can have many results (one for each student).
+     * AN ASSIGNMENT HAS MANY RESULTS.
+     * This relationship works because both Assignments and Results are linked
+     * via the `assessment_id`. We explicitly tell Laravel which columns to use.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function results(): HasMany
     {
-        return $this->hasMany(Result::class);
-    }
-    
-    // If you also link AcademicSession directly to Assignment:
-    public function academicSession(): BelongsTo
-    {
-        return $this->belongsTo(AcademicSession::class);
+        // This tells Laravel: "Get all Results where the result's assessment_id
+        // matches this assignment's assessment_id."
+        return $this->hasMany(Result::class, 'assessment_id', 'assessment_id');
     }
 }

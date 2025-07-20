@@ -28,5 +28,6 @@ class Kernel extends HttpKernel
         // === YOUR CUSTOM ROLE MIDDLEWARE ===
         'is.admin' => \App\Http\Middleware\IsAdmin::class,
         'is.teacher' => \App\Http\Middleware\IsTeacher::class,
+        'is.student' => \App\Http\Middleware\IsStudent::class,
     ];
 }

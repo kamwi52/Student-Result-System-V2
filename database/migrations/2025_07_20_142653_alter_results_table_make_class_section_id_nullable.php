@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('results', function (Blueprint $table) {
-            // Change the existing class_id column to allow NULL values
-            $table->unsignedBigInteger('class_id')->nullable()->change();
+            $table->foreignId('class_section_id')->nullable()->change();
         });
     }
 
@@ -23,8 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('results', function (Blueprint $table) {
-            // This changes it back if you ever need to undo the migration
-            $table->unsignedBigInteger('class_id')->nullable(false)->change();
+            $table->foreignId('class_section_id')->nullable(false)->change(); // If you need to revert
         });
     }
 };

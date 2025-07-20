@@ -5,14 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Result;
 use App\Models\ClassSection;
-use App\Models\Assignment; // Make sure this is imported (formerly Assessment)
+use App\Models\Assessment; // Corrected from Assignment to Assessment based on context
 use App\Models\User;
-use App\Models\AcademicSession; // Make sure this is imported (for ClassSection display)
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
-use Illuminate\Support\Arr; // For Arr::except if needed
 
 class ResultController extends Controller
 {
@@ -21,29 +19,23 @@ class ResultController extends Controller
      */
     public function index(): View
     {
-        // Eager load necessary relationships for display in the table
-        $results = Result::with(['student', 'classSection', 'assignment.subject', 'assignment.classSection'])
-                         ->latest()
-                         ->paginate(20);
+        $results = Result::with(['student', 'assessment.subject', 'assessment.classSection'])
+            ->latest()
+            ->paginate(20);
         return view('admin.results.index', compact('results'));
     }
 
     /**
      * Show the form for creating a new resource.
-     * === THIS IS THE CRITICAL METHOD ===
      */
     public function create(): View
     {
         $students = User::where('role', 'student')->orderBy('name')->get();
-        // Load academic session with class for clear display in the dropdown
+        $assessments = Assessment::with(['subject', 'classSection'])->orderBy('name')->get();
         $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
-        
-        // Fetch all assignments (our assessments), with their subject and class for clear display
-        // This is the variable that the view expects to be defined
-        $assignments = Assignment::with(['subject', 'classSection'])->orderBy('name')->get(); 
 
-        // Ensure 'assignments' is passed to the view via compact()
-        return view('admin.results.create', compact('students', 'classSections', 'assignments'));
+        // --- EDITED: Changed assignments to assessments  ---
+        return view('admin.results.create', compact('students', 'assessments', 'classSections'));
     }
 
     /**
@@ -53,15 +45,24 @@ class ResultController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'class_section_id' => 'required|exists:class_sections,id',
-            'assignment_id' => 'required|exists:assignments,id',
-            'score' => 'required|numeric|min:0', // Adjust min/max as per your needs
-            'remark' => 'nullable|string|max:1000', // Singular 'remark'
+            'assessment_id' => 'required|exists:assessments,id',
+            'score' => 'required|numeric|min:0',
+            'comments' => 'nullable|string|max:1000',
         ]);
 
-        Result::create($validated);
+        // Check if a result already exists for this user and assessment
+        $existingResult = Result::where('user_id', $validated['user_id'])
+            ->where('assessment_id', $validated['assessment_id'])
+            ->first();
 
-        return redirect()->route('admin.results.index')->with('success', 'Result added successfully.');
+        if ($existingResult) {
+            // A result already exists, so display an error message
+            return back()->withErrors(['message' => 'You have already submitted a result for this assessment.']);
+        } else {
+            // No existing result, so create a new one
+            Result::create($validated);
+            return redirect()->route('admin.results.index')->with('success', 'Result added successfully.');
+        }
     }
 
     /**
@@ -70,13 +71,12 @@ class ResultController extends Controller
     public function edit(Result $result): View
     {
         $students = User::where('role', 'student')->orderBy('name')->get();
+        $assessments = Assessment::with(['subject', 'classSection'])->orderBy('name')->get();
         $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
-        $assignments = Assignment::with(['subject', 'classSection'])->orderBy('name')->get(); // Fetch for edit form
 
-        // Eager load relationships for the current result
-        $result->load(['student', 'classSection', 'assignment']);
-
-        return view('admin.results.edit', compact('result', 'students', 'classSections', 'assignments'));
+        $result->load(['student', 'assessment']);
+        // --- EDITED: Changed assignments to assessments for edit too ---
+        return view('admin.results.edit', compact('result', 'students', 'assessments', 'classSections'));
     }
 
     /**
@@ -86,14 +86,11 @@ class ResultController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'class_section_id' => 'required|exists:class_sections,id',
-            'assignment_id' => 'required|exists:assignments,id',
+            'assessment_id' => 'required|exists:assessments,id',
             'score' => 'required|numeric|min:0',
-            'remark' => 'nullable|string|max:1000',
+            'comments' => 'nullable|string|max:1000',
         ]);
-
         $result->update($validated);
-
         return redirect()->route('admin.results.index')->with('success', 'Result updated successfully.');
     }
 
@@ -107,28 +104,22 @@ class ResultController extends Controller
     }
 
     /**
-     * Step 1: Show the form to select a class for import.
+     * Step 1: Show the form to select an assessment for import.
      */
     public function showImportStep1(): View
     {
-        $classSections = ClassSection::orderBy('name')->get(); 
-        return view('admin.results.import-step1', compact('classSections'));
+        $assessments = Assessment::with(['classSection', 'subject'])->orderBy('name')->get();
+        return view('admin.results.import-step1', compact('assessments'));
     }
 
     /**
-     * Step 2: Show the form to select an assignment (assessment) for the chosen class.
+     * Step 2: This method is now handled by the form in step 1 and the handleImport method.
+     * We can keep it for future expansion or remove it if a single form is sufficient.
+     * For now, the logic is combined into handleImport.
      */
-    public function showImportStep2(Request $request): View
+    public function showImportStep2(Request $request)
     {
-        $request->validate(['class_id' => 'required|exists:class_sections,id']);
-
-        $classSection = ClassSection::with('subjects')->findOrFail($request->class_id);
-        
-        $assignments = Assignment::where('class_section_id', $classSection->id)
-            ->with('subject')
-            ->get();
-
-        return view('admin.results.import-step2', compact('classSection', 'assignments'));
+        return redirect()->route('admin.results.import.step1');
     }
 
     /**
@@ -137,33 +128,27 @@ class ResultController extends Controller
     public function handleImport(Request $request)
     {
         $request->validate([
-            'class_id' => 'required|exists:class_sections,id',
-            'assignment_id' => 'required|exists:assignments,id',
-            'results_file' => 'required|file|mimes:csv,txt',
+            'assessment_id' => 'required|exists:assessments,id',
+            'file' => 'required|file|mimes:csv,txt',
         ]);
 
         Log::info('--- RESULT IMPORT PROCESS STARTED ---');
 
-        $classId = $request->input('class_id');
-        $assignmentId = $request->input('assignment_id');
-
-        $classSection = ClassSection::find($classId);
-        $enrolledStudentEmails = $classSection->students()->pluck('email')->flip();
-
-        $studentUsers = User::where('role', 'student')->pluck('id', 'email');
+        $assessment = Assessment::with('classSection.students')->findOrFail($request->assessment_id);
+        $enrolledStudentEmails = $assessment->classSection->students->pluck('email')->flip();
 
         try {
-            $file = $request->file('results_file');
+            $file = $request->file('file');
             $file_handle = fopen($file->getRealPath(), 'r');
             if ($file_handle === false) {
                 throw new \Exception("Could not open the uploaded file.");
             }
 
             $header = array_map('trim', fgetcsv($file_handle));
-            $requiredColumns = ['student_email', 'score', 'remark'];
+            $requiredColumns = ['student_email', 'score', 'comments'];
             if ($header !== $requiredColumns) {
                 fclose($file_handle);
-                throw new \Exception("Invalid CSV header. Expected: 'student_email,score,remark'. Found: '" . implode(',', $header) . "'.");
+                throw new \Exception("Invalid CSV header. Expected: 'student_email,score,comments'. Found: '" . implode(',', $header) . "'.");
             }
 
             $import_errors = [];
@@ -177,31 +162,40 @@ class ResultController extends Controller
 
                 DB::beginTransaction();
                 try {
-                    $studentEmail = $data['student_email'];
-                    if (!isset($studentUsers[$studentEmail])) {
-                        throw new \Exception("Student with email '{$studentEmail}' not found in the system.");
+                    $student = User::where('email', $data['student_email'])->first();
+
+                    if (!$student) {
+                        throw new \Exception("Student with email '{$data['student_email']}' not found.");
                     }
-                    if (!$enrolledStudentEmails->has($studentEmail)) {
-                        throw new \Exception("Student '{$studentEmail}' is not enrolled in the selected class.");
+                    if (!$enrolledStudentEmails->has($data['student_email'])) {
+                        throw new \Exception("Student '{$data['student_email']}' is not enrolled in the required class '{$assessment->classSection->name}'.");
                     }
                     if (!is_numeric($data['score'])) {
                         throw new \Exception("Score '{$data['score']}' is not a valid number.");
                     }
 
-                    Result::updateOrCreate(
-                        [
-                            'user_id' => $studentUsers[$studentEmail],
-                            'assignment_id' => $assignmentId,
-                        ],
-                        [
-                            'class_section_id' => $classId,
+                    // Check if a result already exists for this user and assessment in the import
+                    $existingResult = Result::where('user_id', $student->id)
+                        ->where('assessment_id', $assessment->id)
+                        ->first();
+                    if ($existingResult) {
+                        $existingResult->update([
                             'score' => $data['score'],
-                            'remark' => $data['remark'] ?? null,
-                        ]
-                    );
+                            'comments' => $data['comments'] ?? null
+                        ]);
+                        $success_count++;
+                    } else {
+
+
+                        Result::updateOrCreate(
+                            ['user_id' => $student->id, 'assessment_id' => $assessment->id],
+                            ['score' => $data['score'], 'comments' => $data['comments'] ?? null]
+                        );
+                        $success_count++;
+                    }
 
                     DB::commit();
-                    $success_count++;
+
                 } catch (\Exception $e) {
                     DB::rollBack();
                     $import_errors[] = "Row {$rowNumber}: " . $e->getMessage();
@@ -212,11 +206,11 @@ class ResultController extends Controller
 
             $message = "Import process finished. Successfully created or updated {$success_count} results.";
             return redirect()->route('admin.results.index')
-                             ->with('success', $message)
-                             ->with('import_errors', $import_errors);
+                ->with('success', $message)
+                ->with('import_errors', $import_errors);
         } catch (\Exception $e) {
             Log::error('--- RESULT IMPORT PROCESS FAILED: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'An unexpected error occurred: ' . $e->getMessage());
+            return redirect()->back()->with('import_error', 'An unexpected error occurred: '.$e->getMessage())->withInput();
         }
     }
 }

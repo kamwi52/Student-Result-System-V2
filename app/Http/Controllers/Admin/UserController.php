@@ -114,14 +114,34 @@ class UserController extends Controller
     /**
      * Handle the import of users from a spreadsheet.
      */
-    public function handleImport(Request $request)
+        public function handleImport(Request $request)
     {
         $request->validate([
             'file' => 'required|mimes:xlsx,csv,xls',
         ]);
 
-        Excel::import(new UsersImport, $request->file('file'));
+        try {
+            Excel::import(new UsersImport, $request->file('file'));
 
-        return to_route('admin.users.index')->with('success', 'Users imported successfully.');
+        // This is the specific catch block for validation errors from the spreadsheet
+        } catch (ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+
+            foreach ($failures as $failure) {
+                // Collect user-friendly error messages
+                $errors[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+            }
+            
+            // Redirect back with the specific row errors
+            return back()->with('import_errors', $errors);
+
+        // This is a general catch block for other problems (e.g., bad file format)
+        } catch (\Exception $e) {
+            return back()->with('import_error', 'An error occurred during the import process. Please check your file. Details: ' . $e->getMessage());
+        }
+
+        return to_route('admin.users.index')->with('success', 'Users have been successfully imported and/or updated.');
     }
+
 }

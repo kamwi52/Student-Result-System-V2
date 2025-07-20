@@ -3,48 +3,46 @@
 namespace App\Imports;
 
 use App\Models\Result;
-use Maatwebsite\Excel\Concerns\ToCollection;
-use Illuminate\Support\Collection;
+use App\Models\User;
+use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class ResultsImport implements ToCollection, WithHeadingRow, WithValidation
+class ResultsImport implements ToModel, WithHeadingRow, WithValidation
 {
-    protected $class_id;
-    protected $assessment_id;
+    protected int $assessmentId;
 
     /**
-     * We pass the class and assessment IDs to the constructor
-     * so we can use them when creating the result records.
+     * Store the assessment ID when the class is instantiated.
      */
-    public function __construct(int $class_id, int $assessment_id)
+    public function __construct(int $assessmentId)
     {
-        $this->class_id = $class_id;
-        $this->assessment_id = $assessment_id;
+        $this->assessmentId = $assessmentId;
     }
 
     /**
-    * @param Collection $rows
-    */
-    public function collection(Collection $rows)
+     * @param array $row
+     * @return \Illuminate\Database\Eloquent\Model|null
+     */
+    public function model(array $row)
     {
-        foreach ($rows as $row) 
-        {
-            // We only process rows that have a score entered.
-            if (isset($row['score']) && !is_null($row['score'])) {
-                Result::updateOrCreate(
-                    [
-                        'user_id' => $row['student_id'],
-                        'class_id' => $this->class_id,
-                        'assessment_id' => $this->assessment_id,
-                    ],
-                    [
-                        'score' => $row['score'],
-                        'remarks' => $row['remarks'] ?? null,
-                    ]
-                );
-            }
+        $student = User::where('email', $row['student_email'])->where('role', 'student')->first();
+
+        if (!$student) {
+            // The validation rule will catch this, but this is a safeguard.
+            return null;
         }
+
+        return Result::updateOrCreate(
+            [
+                'assessment_id' => $this->assessmentId,
+                'user_id'       => $student->id,
+            ],
+            [
+                'score'         => $row['score'],
+                'comments'      => $row['comments'] ?? null,
+            ]
+        );
     }
 
     /**
@@ -53,8 +51,12 @@ class ResultsImport implements ToCollection, WithHeadingRow, WithValidation
     public function rules(): array
     {
         return [
-            'student_id' => 'required|exists:users,student_id',
-            'score' => 'nullable|numeric|min:0|max:100',
+            // Ensure student_email exists in the users table
+            'student_email' => 'required|email|exists:users,email',
+            // Ensure score is numeric
+            'score' => 'required|numeric|min:0',
+            // Comments are optional
+            'comments' => 'nullable|string',
         ];
     }
 }

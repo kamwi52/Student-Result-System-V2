@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\ClassSection;
 use App\Models\Subject;
-use App\Models\Result;
-use App\Models\Assessment; // Make sure this is present and correct
+use App\Models\Result; // <-- FIX: Changed -> to \
+use App\Models\Assessment; // <-- FIX: Changed -> to \
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB; // If you still use DB facade for pivot checks
 
 class GradebookController extends Controller
 {
@@ -77,45 +78,47 @@ class GradebookController extends Controller
             abort(403, 'Unauthorized: You are not assigned to teach this subject in this class.');
         }
 
-        // Fetch assignments relevant to this specific class, subject, and teacher
-        $assessments = Assignment::where('class_section_id', $classSection->id)
+        $assignments = Assignment::where('class_section_id', $classSection->id)
                                  ->where('subject_id', $subject->id)
                                  ->where('teacher_id', $teacher->id)
-                                 ->with(['classSection', 'subject', 'teacher'])
+                                 ->with(['classSection', 'subject', 'teacher', 'assessment'])
                                  ->latest()
                                  ->paginate(10);
 
-        return view('teacher.gradebook.assessments', compact('assessments', 'classSection', 'subject'));
+        return view('teacher.gradebook.assessments', compact('assignments', 'classSection', 'subject'));
     }
 
     /**
-     * PAGE 3: Display the results for the selected assignment and assessment.
-     * THIS IS THE ONLY showResults METHOD THAT SHOULD BE IN THIS FILE.
+     * PAGE 3: Display the results for a specific assignment.
      */
-    public function showResults(Assignment $assignment, Assessment $assessment): View
+    public function showResults(Assignment $assignment): View
     {
         $teacher = Auth::user();
         
-        // Security Check: Ensure the logged-in teacher owns this assignment
+        $assignment->load('assessment'); 
+        
+        if (is_null($assignment->assessment)) {
+            abort(404, 'Assessment not found for this assignment. Data integrity issue.');
+        }
+
+        $assessment = $assignment->assessment; 
+
         if ($assignment->teacher_id !== $teacher->id) {
             abort(403, 'Unauthorized Action: This assignment is not yours.');
         }
-        // Additional security check: ensure the assessment belongs to the same subject as the assignment
+        
         if ($assessment->subject_id !== $assignment->subject_id) {
             abort(403, 'Unauthorized Action: Assessment subject mismatch.');
         }
 
-        $assignment->load('classSection', 'subject');
+        $assignment->loadMissing('classSection.students', 'subject'); 
 
-        // Get all students enrolled in the assignment's class.
         $students = $assignment->classSection->students()->orderBy('name')->get();
 
-        // Get all relevant results, keyed by student ID for easy lookup in the view
-        $results = Result::where('assignment_id', $assignment->id) // Filter by the specific assignment instance
-                         ->where('class_section_id', $assignment->class_section_id) // Filter by class
-                         ->whereIn('user_id', $students->pluck('id')) // user_id in results is the student's ID
+        $results = Result::where('assessment_id', $assessment->id) 
+                         ->whereIn('user_id', $students->pluck('id'))
                          ->get()
-                         ->keyBy('user_id'); // Key results by student ID for efficient lookup
+                         ->keyBy('user_id');
 
         return view('teacher.gradebook.results', compact('assignment', 'assessment', 'students', 'results'));
     }

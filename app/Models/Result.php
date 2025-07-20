@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo; // Ensure this is imported
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Result extends Model
 {
@@ -16,13 +16,12 @@ class Result extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',          // Student's ID
-        'assignment_id',
-        'class_section_id',
-        'assessment_id',    // <--- ADDED: This was causing the NOT NULL error
+        'user_id',          // Student's ID (foreign key to users table)
+        'assessment_id',    // Foreign key to assessments table
         'score',
-        'remark',
-        'teacher_id',       // <--- ADDED: Important as it's also mass-assigned by the controller
+        'comments',         // Renamed from 'remark' to match controller's usage
+        'teacher_id',       // Foreign key to users table (the teacher who recorded it)
+        'class_section_id', // Foreign key to class_sections table
     ];
 
     /**
@@ -34,15 +33,10 @@ class Result extends Model
     }
 
     /**
-     * Get the assignment that the result belongs to.
-     */
-    public function assignment(): BelongsTo
-    {
-        return $this->belongsTo(Assignment::class);
-    }
-
-    /**
      * Get the assessment that the result belongs to.
+     * --- REMOVED THE SEPARATE `assignment()` METHOD AS RESULTS ARE TIED TO ASSESSMENTS ---
+     * If you need to access the Assignment through the Result, you'd do it via:
+     * $result->assessment->assignment
      */
     public function assessment(): BelongsTo
     {

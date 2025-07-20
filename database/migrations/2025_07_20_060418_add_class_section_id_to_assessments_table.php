@@ -6,26 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('assessments', function (Blueprint $table) {
-            // Add the new column. We'll make it a 'date' type.
-            // ->after('max_marks') is optional but keeps the table organized.
-            $table->date('assessment_date')->nullable()->after('max_marks');
+            // Add the foreign key column after 'subject_id'
+            $table->foreignId('class_section_id')->nullable()->after('subject_id')->constrained()->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('assessments', function (Blueprint $table) {
-            // This tells Laravel how to undo the migration
-            $table->dropColumn('assessment_date');
+            $table->dropForeign(['class_section_id']);
+            $table->dropColumn('class_section_id');
         });
     }
 };

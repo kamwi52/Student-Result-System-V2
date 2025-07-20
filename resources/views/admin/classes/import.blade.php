@@ -1,40 +1,64 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Import Classes') }}
+            {{ __('Import & Update Classes') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
-                
-                <div class="mb-6 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded-md">
-                    <h3 class="font-bold">Import Instructions</h3>
-                    <p class="text-sm mt-1">Upload a CSV file with the exact header row: <strong>name,academic_session_id,grading_scale_id</strong></p>
-                    <ul class="list-disc list-inside text-sm mt-2">
-                        <li><strong>name:</strong> The name of the class (e.g., Grade 10A).</li>
-                        <li><strong>academic_session_id:</strong> The numeric ID of the academic session.</li>
-                        <li><strong>grading_scale_id:</strong> The numeric ID of the grading scale (this field can be empty).</li>
-                    </ul>
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900 dark:text-gray-100">
+
+                    {{-- Display general or row-specific import errors --}}
+                    @if(session('error') || session('import_errors'))
+                        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                            <p class="font-bold">Import Failed!</p>
+                            @if(session('error'))
+                                <p>{{ session('error') }}</p>
+                            @endif
+                            @if(session('import_errors') && !empty(session('import_errors')))
+                                <ul class="mt-2 list-disc list-inside text-sm">
+                                    @foreach(session('import_errors') as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- Instruction Block --}}
+                    <div class="mb-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
+                        <h3 class="font-bold text-md text-gray-800 dark:text-gray-200">File Requirements</h3>
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            Your CSV file must have a header row with the following exact column names. The combination of `name` and `academic_session_id` is used to find existing classes to update.
+                        </p>
+                        <ul class="mt-2 list-disc list-inside text-sm font-mono text-gray-800 dark:text-gray-200">
+                            <li>name</li>
+                            <li>academic_session_id</li>
+                            <li>grading_scale_id</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" action="{{ route('admin.classes.import.handle') }}" enctype="multipart/form-data">
+                        @csrf
+                        <div>
+                            {{-- EDITED: Using 'file' for consistency --}}
+                            <x-input-label for="file" :value="__('Select CSV File')" />
+                            <x-text-input id="file" class="block w-full mt-1" type="file" name="file" required accept=".csv,.txt" />
+                            <x-input-error :messages="$errors->get('file')" class="mt-2" />
+                        </div>
+
+                        <div class="flex items-center justify-end mt-6">
+                            <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md" href="{{ route('admin.classes.index') }}">
+                                {{ __('Cancel') }}
+                            </a>
+                            <x-primary-button class="ms-4">
+                                {{ __('Import Classes') }}
+                            </x-primary-button>
+                        </div>
+                    </form>
                 </div>
-
-                <x-validation-errors class="mb-4" />
-
-                <form method="POST" action="{{ route('admin.classes.import.handle') }}" enctype="multipart/form-data">
-                    @csrf
-                    <div>
-                        <label for="import_file" class="block font-medium text-sm text-gray-700 dark:text-gray-300">Class Import File (CSV)</label>
-                        <input id="import_file" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" type="file" name="import_file" required />
-                    </div>
-
-                    <div class="flex items-center justify-end mt-6">
-                        <a href="{{ route('admin.classes.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 mr-4">Cancel</a>
-                        <x-primary-button>
-                            Upload and Import
-                        </x-primary-button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

@@ -4,17 +4,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddAssessmentIdToAssignmentsTable extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
+     * This method is intentionally left blank because the column already exists.
      */
     public function up(): void
     {
-        // The code is now restored for future migrations.
-        Schema::table('assignments', function (Blueprint $table) {
-            $table->foreignId('assessment_id')->nullable()->after('id')->constrained()->onDelete('cascade');
-        });
+        // This method is intentionally left blank.
+        // DO NOT put any code here for now.
     }
 
     /**
@@ -23,8 +22,9 @@ class AddAssessmentIdToAssignmentsTable extends Migration
     public function down(): void
     {
         Schema::table('assignments', function (Blueprint $table) {
-            $table->dropForeign(['assessment_id']);
+            // You might need to drop foreign keys before dropping the column on rollback
+            // $table->dropForeign(['assessment_id']);
             $table->dropColumn('assessment_id');
         });
     }
-}
+};

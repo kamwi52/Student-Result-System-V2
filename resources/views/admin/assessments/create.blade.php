@@ -12,7 +12,7 @@
                     <form method="POST" action="{{ route('admin.assessments.store') }}">
                         @csrf
 
-                        <!-- Name -->
+                        <!-- Assessment Name -->
                         <div class="mb-4">
                             <x-input-label for="name" :value="__('Assessment Name')" />
                             <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus />
@@ -22,7 +22,7 @@
                         <!-- Subject -->
                         <div class="mb-4">
                             <x-input-label for="subject_id" :value="__('Subject')" />
-                            <select id="subject_id" name="subject_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <select id="subject_id" name="subject_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                 <option value="">Select Subject</option>
                                 @foreach($subjects as $subject)
                                     <option value="{{ $subject->id }}" @selected(old('subject_id') == $subject->id)>{{ $subject->name }}</option>
@@ -34,7 +34,7 @@
                         <!-- Academic Session -->
                         <div class="mb-4">
                             <x-input-label for="academic_session_id" :value="__('Academic Session')" />
-                            <select id="academic_session_id" name="academic_session_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <select id="academic_session_id" name="academic_session_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                 <option value="">Select Academic Session</option>
                                 @foreach($academicSessions as $session)
                                     <option value="{{ $session->id }}" @selected(old('academic_session_id') == $session->id)>{{ $session->name }}</option>
@@ -65,9 +65,9 @@
                         </div>
 
                         <!-- Assigned Teacher -->
-                        <div class="mb-4">
+                         <div class="mb-4">
                             <x-input-label for="teacher_id" :value="__('Assigned Teacher')" />
-                            <select id="teacher_id" name="teacher_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <select id="teacher_id" name="teacher_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                 <option value="">Select Teacher</option>
                                 @foreach($teachers as $teacher)
                                     <option value="{{ $teacher->id }}" @selected(old('teacher_id') == $teacher->id)>{{ $teacher->name }}</option>
@@ -76,16 +76,23 @@
                             <x-input-error :messages="$errors->get('teacher_id')" class="mt-2" />
                         </div>
 
-                        <!-- === Class Section Assignment (NEW FIELD) === -->
+                        <!-- Class Section -->
                         <div class="mb-4">
-                            <x-input-label for="class_section_id" :value="__('Assigned Class')" />
-                            <select id="class_section_id" name="class_section_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                <option value="">Select Class</option>
+                            <x-input-label for="class_section_id" :value="__('Class Section')" />
+                            <select id="class_section_id" name="class_section_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                <option value="">Select Class Section</option>
                                 @foreach($classSections as $classSection)
-                                    <option value="{{ $classSection->id }}" @selected(old('class_section_id') == $classSection->id)>{{ $classSection->name }} - {{ $classSection->academicSession->name ?? '' }}</option>
+                                    <option value="{{ $classSection->id }}" @selected(old('class_section_id') == $classSection->id)>{{ $classSection->name }}</option>
                                 @endforeach
                             </select>
                             <x-input-error :messages="$errors->get('class_section_id')" class="mt-2" />
+                        </div>
+
+                        <!-- Assignment Title -->
+                         <div class="mb-4">
+                            <x-input-label for="title" :value="__('Assignment Title')" />
+                            <x-text-input id="title" class="block mt-1 w-full" type="text" name="title" :value="old('title')" required/>
+                            <x-input-error :messages="$errors->get('title')" class="mt-2" />
                         </div>
 
                         <div class="flex items-center justify-end mt-4">

@@ -1,86 +1,100 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-wrap justify-between items-center gap-4">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                {{ __('Bulk Grade Entry for: ') }} {{ $assignment->classSection->name }}
-            </h2>
-            {{-- Optionally add a back button or other actions here --}}
-        </div>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{-- Title displays the assignment's assessment name, its subject, and class --}}
+            Bulk Grade: {{ $assignment->assessment->name ?? 'N/A' }} ({{ $assignment->subject->name }} in {{ $classSection->name }})
+        </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <x-success-message /> {{-- To display success messages after saving --}}
-            <x-validation-errors class="mb-4" /> {{-- To display validation errors --}}
-
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <h3 class="text-lg font-bold mb-1">Assessment: <span class="font-normal">{{ $assessment->name }}</span></h3>
-                    <h3 class="text-lg font-bold mb-4">Subject: <span class="font-normal">{{ $assignment->subject->name }}</span></h3>
 
-                    @if ($students->isEmpty())
-                        <div class="p-4 text-sm text-gray-700 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 rounded-lg" role="alert">
-                            No students enrolled in this class.
+                    {{-- Display general success/error messages (e.g., from controller redirect) --}}
+                    @if(session('success'))
+                        <div class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
+                            <p>{{ session('success') }}</p>
                         </div>
-                    @else
-                        <form action="{{ route('teacher.grades.bulk.store') }}" method="POST">
-                            @csrf
-                            <input type="hidden" name="assessment_id" value="{{ $assessment->id }}">
-                            <input type="hidden" name="assignment_id" value="{{ $assignment->id }}"> {{-- Crucial for store method --}}
-
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead class="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Student Name</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Score (Max {{ $assessment->max_marks }})</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Remarks</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        @foreach ($students as $student)
-                                            @php
-                                                // Get existing result or default to empty
-                                                $result = $existingResults->get($student->id);
-                                                $currentScore = $result ? $result->score : '';
-                                                $currentRemark = $result ? $result->remark : '';
-                                            @endphp
-                                            <tr>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                    {{ $student->name }}
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                    <input type="number" name="scores[{{ $student->id }}]" 
-                                                           value="{{ old('scores.' . $student->id, $currentScore) }}"
-                                                           min="0" max="{{ $assessment->max_marks }}" step="0.01"
-                                                           class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-900 dark:text-gray-100">
-                                                    @error('scores.' . $student->id)
-                                                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                                    @enderror
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                    <input type="text" name="remarks[{{ $student->id }}]" 
-                                                           value="{{ old('remarks.' . $student->id, $currentRemark) }}"
-                                                           maxlength="255"
-                                                           class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-900 dark:text-gray-100">
-                                                    @error('remarks.' . $student->id)
-                                                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                                    @enderror
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="flex items-center justify-end mt-6">
-                                <a href="{{ route('teacher.gradebook.results', ['assignment' => $assignment->id, 'assessment' => $assessment->id]) }}" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mr-4">Cancel</a>
-                                <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">
-                                    Save All Grades
-                                </button>
-                            </div>
-                        </form>
                     @endif
+                    @if(session('error'))
+                        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                            <p class="font-bold">Error!</p>
+                            <p>{{ session('error') }}</p>
+                        </div>
+                    @endif
+
+                    {{-- Display validation errors from the current form submission --}}
+                    @if ($errors->any())
+                        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+                            <p class="font-bold">Please correct the following errors:</p>
+                            <ul class="mt-2 list-disc list-inside">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    <form method="POST" action="{{ route('teacher.assignments.bulk.store', $assignment) }}">
+                        @csrf
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student Name</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Score (Max: {{ $assignment->assessment->max_marks ?? 'N/A' }})</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Comments</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    @forelse ($students as $student)
+                                        @php
+                                            // Get existing result for this student and assignment using the results map
+                                            $existingResult = $resultsMap->get($student->id);
+                                        @endphp
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                {{ $student->name }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <input type="number" 
+                                                       name="scores[{{ $student->id }}]" 
+                                                       value="{{ old('scores.' . $student->id, $existingResult->score ?? '') }}" 
+                                                       class="w-24 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                                                       min="0" max="{{ $assignment->assessment->max_marks ?? '' }}">
+                                                {{-- Display specific validation error for this score field --}}
+                                                @error('scores.' . $student->id)<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <input type="text" 
+                                                       name="comments[{{ $student->id }}]" 
+                                                       value="{{ old('comments.' . $student->id, $existingResult->comments ?? '') }}" 
+                                                       class="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                                                {{-- Display specific validation error for this comment field --}}
+                                                @error('comments.' . $student->id)<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-gray-500 dark:text-gray-400">No students enrolled in this class.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex items-center justify-end mt-6">
+                            <a href="{{ route('teacher.gradebook.assessments', [$assignment->classSection, $assignment->subject]) }}" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mr-4">
+                                {{ __('Cancel') }}
+                            </a>
+                            <x-primary-button>
+                                {{ __('Save Grades') }}
+                            </x-primary-button>
+                        </div>
+                    </form>
+
                 </div>
             </div>
         </div>

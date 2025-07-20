@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Subject;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB; // For database transactions
+use Exception; // To catch generic exceptions
 
 class SubjectController extends Controller
 {
@@ -84,8 +85,13 @@ class SubjectController extends Controller
         return view('admin.subjects.import');
     }
 
+    /**
+     * Handle the import of subjects from a spreadsheet.
+     * This is your custom, robust CSV import logic.
+     */
     public function handleImport(Request $request)
     {
+        // Your controller expects the file input to be named 'subjects_file'
         $request->validate(['subjects_file' => 'required|file|mimes:csv,txt']);
     
         try {
@@ -94,48 +100,61 @@ class SubjectController extends Controller
             $records = array_map('str_getcsv', file($path));
     
             if (count($records) < 1) {
-                return redirect()->back()->with('import_errors', ['The uploaded file is empty.']);
+                // Using 'import_error' (singular) for a general error
+                return redirect()->back()->with('import_error', 'The uploaded file is empty or invalid.');
             }
     
             // Clean the header by trimming whitespace from each column name
             $header = array_map('trim', array_shift($records));
             $requiredColumns = ['name', 'code', 'description'];
     
+            // Strict check for header columns and their order
             if ($header !== $requiredColumns) {
                 $expected = implode(', ', $requiredColumns);
                 $actual = implode(', ', $header);
-                throw new \Exception("Invalid CSV header. Expected: '{$expected}'. Found: '{$actual}'.");
+                throw new Exception("Invalid CSV header. Expected: '{$expected}'. Found: '{$actual}'.");
             }
     
             $import_errors = [];
             $success_count = 0;
     
+            // Process each row
             foreach ($records as $key => $row) {
-                if (empty(implode('', $row))) continue; // Skip empty rows
-                $rowNumber = $key + 2;
+                if (count($row) !== count($header) || empty(implode('', $row))) {
+                    continue; // Skip empty rows or rows with incorrect column count
+                }
+                $rowNumber = $key + 2; // +1 for header, +1 for 0-index
+                
                 DB::beginTransaction();
                 try {
                     $data = array_combine($header, $row);
+                    
                     if (empty($data['name']) || empty($data['code'])) {
-                        throw new \Exception("Both 'name' and 'code' fields are required.");
+                        throw new Exception("Both 'name' and 'code' fields are required.");
                     }
                     if (Subject::where('name', $data['name'])->orWhere('code', $data['code'])->exists()) {
-                        throw new \Exception("A subject with the name '{$data['name']}' or code '{$data['code']}' already exists.");
+                        throw new Exception("A subject with the name '{$data['name']}' or code '{$data['code']}' already exists.");
                     }
+
                     Subject::create($data);
                     DB::commit();
                     $success_count++;
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     DB::rollBack();
                     $import_errors[] = "Row {$rowNumber}: " . $e->getMessage();
                 }
             }
+            
             $message = "Import process finished. Successfully created {$success_count} subjects.";
+            
+            // Return to the index page with a success message and any specific row errors
             return redirect()->route('admin.subjects.index')
                              ->with('success', $message)
-                             ->with('import_errors', $import_errors);
-        } catch (\Exception $e) {
-            return redirect()->back()->with('import_errors', ['An unexpected error occurred: ' . $e->getMessage()]);
+                             ->with('import_errors', $import_errors); // This will be an array of error strings
+                             
+        } catch (Exception $e) {
+            // Catches general errors like invalid headers or file read issues
+            return redirect()->back()->with('import_error', 'An unexpected error occurred: ' . $e->getMessage());
         }
     }
 }

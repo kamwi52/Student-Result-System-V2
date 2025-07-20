@@ -11,12 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        
-         Schema::table('class_section_subject', function (Blueprint $table) {
-             $table->foreignId('teacher_id')->nullable()->constrained('users')->onDelete('set null')->after('subject_id');
-         });
-       
-        
+        Schema::table('class_section_subject', function (Blueprint $table) {
+            $table->timestamps(); // This adds created_at and updated_at
+        });
     }
 
     /**
@@ -25,8 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('class_section_subject', function (Blueprint $table) {
-            $table->dropForeign(['teacher_id']);
-            $table->dropColumn('teacher_id');
+            $table->dropTimestamps(); // This removes them if you roll back
         });
     }
 };

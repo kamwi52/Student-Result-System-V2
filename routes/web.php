@@ -19,7 +19,9 @@ use App\Http\Controllers\Teacher\ResultController as TeacherResultController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordController;
-use App\Http\Controllers\Admin\AcademicSessionController; // <-- ADD THIS IMPORT
+use App\Http\Controllers\Admin\AcademicSessionController;
+use App\Http\Controllers\Teacher\AssignmentController;
+use App\Http\Controllers\ReportCardController; // <-- ADD THIS LINE
 
 /*
 |--------------------------------------------------------------------------
@@ -54,68 +56,67 @@ Route::middleware('auth')->group(function () {
 // Admin Routes
 Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
-
-    // --- Specific Non-Resourceful Routes ---
-
-    // Import Routes
-    Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
-    Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.handleImport');
     
-    Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
-    Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
-    
-    Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
-    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
-    
-    Route::get('/assessments/import', [AssessmentController::class, 'showImportForm'])->name('assessments.import.show');
-    Route::post('/assessments/import', [AssessmentController::class, 'handleImport'])->name('assessments.import.handle');
+    // User Routes
+    Route::get('users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
+    Route::post('users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
+    Route::resource('users', UserController::class);
 
-    Route::get('/results/import/step-1', [AdminResultController::class, 'showImportStep1'])->name('results.import.step1');
-    Route::get('/results/import/step-2', [AdminResultController::class, 'showImportStep2'])->name('results.import.step2');
-    Route::post('/results/import/handle', [AdminResultController::class, 'handleImport'])->name('results.import.handle');
-
-    // Other Specific Routes
+    // Subject Routes
+    Route::get('subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
+    Route::post('subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
+    Route::resource('subjects', SubjectController::class);
+    
+    // Class Routes
+    Route::get('classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
+    Route::post('classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
-
-    // --- Resourceful Routes ---
-    Route::resource('users', UserController::class);
-    Route::resource('subjects', SubjectController::class);
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
+
+    // Assessment Routes
     Route::resource('assessments', AssessmentController::class);
+
+    // Result Routes
+    Route::get('results/import/step-1', [AdminResultController::class, 'showImportStep1'])->name('results.import.step1');
+    Route::post('results/import/step-2', [AdminResultController::class, 'showImportStep2'])->name('results.import.step2');
+    Route::post('results/import/process', [AdminResultController::class, 'handleImport'])->name('results.import.process');
     Route::resource('results', AdminResultController::class);
-    Route::resource('grading-scales', GradingScaleController::class);
     
-    // Academic Session Routes (ADD THIS LINE)
-    Route::resource('academic-sessions', AcademicSessionController::class); 
+    // Other Admin Routes
+    Route::resource('grading-scales', GradingScaleController::class);
+    Route::resource('academic-sessions', AcademicSessionController::class);
+    
+    // --- REPORT CARD ROUTE (ADMIN) ---
+    Route::get('/students/{student}/report', [ReportCardController::class, 'generateForAdmin'])->name('students.report');
 });
 
-// Teacher Routes
+
+// === TEACHER ROUTES ===
 Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
     
-    // === UPDATED GRADEBOOK ROUTES ===
-
-    // Main Gradebook page: Shows list of Class-Subject pairs the teacher teaches
+    // Gradebook Navigation
     Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
-    
-    // Page to view assignments for a specific Class & Subject combo
-    // Parameters are ClassSection and Subject, not Assignment directly
     Route::get('gradebook/{classSection}/{subject}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
     
-    // Page to view results/grades for a specific assignment and assessment template
-    // This route remains as is, but the link TO it from showAssessments will change.
-    Route::get('gradebook/assignments/{assignment}/assessments/{assessment}', [GradebookController::class, 'showResults'])->name('gradebook.results');
-
-
-    Route::get('/assignments/{assignment}/assessment/{assessment}/bulk-edit', [BulkGradeController::class, 'show'])->name('grades.bulk.show');
-    Route::post('/grades/bulk/store', [BulkGradeController::class, 'store'])->name('grades.bulk.store');
-    Route::get('/assignments/{assignment}/results/{result}/edit', [TeacherResultController::class, 'edit'])->name('results.edit');
+    // Assignment & Result Management
+    Route::get('assignments/{assignment}/results', [GradebookController::class, 'showResults'])->name('assignments.results');
+    Route::get('/assignments/{assignment}/bulk-edit', [BulkGradeController::class, 'edit'])->name('grades.bulk-edit');
+    Route::put('/assignments/{assignment}/bulk-update', [BulkGradeController::class, 'update'])->name('grades.bulk-update');
+    Route::get('/results/{result}/edit', [TeacherResultController::class, 'edit'])->name('results.edit');
     Route::put('/results/{result}', [TeacherResultController::class, 'update'])->name('results.update');
+
+    // --- REPORT CARD ROUTE (TEACHER) ---
+    Route::get('/students/{student}/report', [ReportCardController::class, 'generateForTeacher'])->name('students.report');
 });
 
-// Student Routes
-Route::middleware(['auth'])->prefix('student')->name('student.')->group(function () {
+
+// === STUDENT ROUTES ===
+Route::middleware(['auth', 'is.student'])->prefix('student')->name('student.')->group(function () {
     Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
     Route::get('/classes/{classSection}/results', [StudentDashboardController::class, 'showResults'])->name('class.results');
+    
+    // --- REPORT CARD ROUTE (STUDENT) ---
+    Route::get('/my-report', [ReportCardController::class, 'generateForStudent'])->name('report');
 });

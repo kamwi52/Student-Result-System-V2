@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClassSection;
-use App\Models\Subject; // Make sure this is imported
-use App\Models\User; // Make sure this is imported
+use App\Models\Subject;
+use App\Models\User;
 use App\Models\AcademicSession;
 use App\Models\GradingScale;
 use Illuminate\Http\Request;
@@ -13,6 +13,7 @@ use Illuminate\View\View;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class ClassSectionController extends Controller
 {
@@ -21,7 +22,6 @@ class ClassSectionController extends Controller
      */
     public function index(): View
     {
-        // Eager load relationships and add a count for enrolled students
         $classes = ClassSection::with(['academicSession', 'subjects'])
                                 ->withCount('students')
                                 ->latest()
@@ -38,9 +38,7 @@ class ClassSectionController extends Controller
         $subjects = Subject::orderBy('name')->get();
         $academicSessions = AcademicSession::orderBy('name', 'desc')->get();
         $gradingScales = GradingScale::orderBy('name')->get();
-        // Teachers are not strictly needed on the create page anymore for assignments,
-        // but included for consistency if general class teachers are managed here.
-        $teachers = User::where('role', 'teacher')->orderBy('name')->get(); 
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
         return view('admin.classes.create', compact('subjects', 'academicSessions', 'gradingScales', 'teachers'));
     }
 
@@ -50,7 +48,14 @@ class ClassSectionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('class_sections')->where(function ($query) use ($request) {
+                    return $query->where('academic_session_id', $request->academic_session_id);
+                }),
+            ],
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'grading_scale_id' => 'required|exists:grading_scales,id',
             'subjects' => 'nullable|array',
@@ -68,70 +73,56 @@ class ClassSectionController extends Controller
 
     /**
      * Show the form for editing the specified resource.
-     * === THIS IS THE CORRECTED METHOD FOR QUALIFIED TEACHERS ===
      */
     public function edit(ClassSection $classSection): View
     {
-        // === FIX: Ensure all subjects are fetched and passed ===
-        $subjects = Subject::orderBy('name')->get(); 
-
-        // Load teachers with their qualified subjects for dynamic filtering in the view
+        $subjects = Subject::orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->with('qualifiedSubjects')->orderBy('name')->get();
-        
         $academicSessions = AcademicSession::orderBy('name', 'desc')->get();
         $gradingScales = GradingScale::orderBy('name')->get();
-
-        // Eager load class's assigned subjects (with pivot data) for current selections
         $classSection->load(['subjects' => function($query) {
-            $query->withPivot('teacher_id'); // Ensure teacher_id is loaded from pivot table
+            $query->withPivot('teacher_id');
         }]);
 
-        // Pass all necessary variables to the view
         return view('admin.classes.edit', compact(
-            'classSection', 
-            'subjects', // Make sure $subjects is in compact()
-            'teachers', 
-            'academicSessions', 
-            'gradingScales'
+            'classSection', 'subjects', 'teachers', 'academicSessions', 'gradingScales'
         ));
     }
 
     /**
      * Update the specified resource in storage.
-     * === THIS METHOD HAS BEEN UPDATED WITH THE FIX ===
      */
     public function update(Request $request, ClassSection $classSection)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('class_sections')->where(function ($query) use ($request) {
+                    return $query->where('academic_session_id', $request->academic_session_id);
+                })->ignore($classSection->id),
+            ],
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'grading_scale_id' => 'required|exists:grading_scales,id',
-            'subjects' => 'nullable|array', // This will come from the subject multi-select box
+            'subjects' => 'nullable|array',
             'subjects.*' => 'exists:subjects,id',
-            'assignments' => 'nullable|array', // This will come from the teacher dropdowns
+            'assignments' => 'nullable|array',
             'assignments.*' => 'nullable|exists:users,id',
         ]);
         
         $classSection->update($request->only('name', 'academic_session_id', 'grading_scale_id'));
     
-        // --- THIS IS THE CORRECTED LOGIC ---
-        // We will build a sync array with teacher IDs first, then sync all at once.
         $syncData = [];
         if (isset($validated['assignments'])) {
             foreach ($validated['assignments'] as $subjectId => $teacherId) {
-                // Ensure the subject was actually selected in the 'subjects' array
                 if (in_array($subjectId, $validated['subjects'] ?? [])) {
-                    // Check if the teacherId is valid (not null, not 0). If not, force it to be null.
                     $validTeacherId = ($teacherId && (int)$teacherId > 0) ? (int)$teacherId : null;
                     $syncData[$subjectId] = ['teacher_id' => $validTeacherId];
                 }
             }
         }
-
-        // Now, sync the subjects and their assigned teachers in a single, efficient operation.
-        // This handles adding new subjects, removing unchecked subjects, and updating teacher assignments.
         $classSection->subjects()->sync($syncData);
-        // --- END CORRECTED LOGIC ---
         
         return redirect()->route('admin.classes.index')->with('success', 'Class and assignments updated successfully.');
     }
@@ -145,9 +136,7 @@ class ClassSectionController extends Controller
              return redirect()->route('admin.classes.index')
                          ->with('error', 'Cannot delete this class. It has students enrolled or assignments associated with it.');
         }
-
         $classSection->delete();
-
         return redirect()->route('admin.classes.index')->with('success', 'Class deleted successfully.');
     }
 
@@ -164,12 +153,14 @@ class ClassSectionController extends Controller
      */
     public function handleImport(Request $request)
     {
+        // --- EDITED: Using 'file' for consistency with other import forms ---
         $request->validate([
-            'import_file' => 'required|file|mimes:csv,txt',
+            'file' => 'required|file|mimes:csv,txt',
         ]);
 
         try {
-            $file = $request->file('import_file');
+            // --- EDITED: Using 'file' for consistency ---
+            $file = $request->file('file');
             $file_handle = fopen($file->getRealPath(), 'r');
             if ($file_handle === false) {
                 throw new \Exception("Could not open the uploaded file.");
@@ -186,8 +177,6 @@ class ClassSectionController extends Controller
                 throw new \Exception("Invalid CSV header. File must contain columns: 'name', 'academic_session_id', 'grading_scale_id'.");
             }
 
-            $validSessionIds = AcademicSession::pluck('id')->flip();
-            $validGradingScaleIds = GradingScale::pluck('id')->flip();
             $successCount = 0;
             $errorRows = [];
             $rowNumber = 1;
@@ -198,11 +187,14 @@ class ClassSectionController extends Controller
                 $data = array_combine($header, array_map('trim', $row));
 
                 try {
+                    // Using updateOrCreate is great for syncing data
                     ClassSection::updateOrCreate(
-                        ['name' => $data['name']],
                         [
-                            'academic_session_id' => $data['academic_session_id'],
-                            'grading_scale_id' => !empty($data['grading_scale_id']) ? $data['grading_scale_id'] : null,
+                            'name' => $data['name'],
+                            'academic_session_id' => $data['academic_session_id']
+                        ],
+                        [
+                            'grading_scale_id' => $data['grading_scale_id'],
                         ]
                     );
                     $successCount++;

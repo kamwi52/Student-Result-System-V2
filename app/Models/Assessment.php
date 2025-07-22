@@ -51,6 +51,7 @@ class Assessment extends Model
 
     /**
      * An assessment has one assignment.
+     * This seems to be where details like type/title are stored.
      */
     public function assignment(): HasOne
     {

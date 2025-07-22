@@ -37,10 +37,7 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    
-                                    {{-- === FIX: Removed whitespace-nowrap from Academic Session Header === --}}
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Session</th>
-                                    
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Students</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subjects & Assigned Teachers</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -50,14 +47,8 @@
                                 @forelse ($classes as $class)
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $class->name }}</td>
-                                        
-                                        {{-- === FIX: Removed whitespace-nowrap from Academic Session Data Cell === --}}
                                         <td class="px-6 py-4 text-sm text-gray-500">{{ $class->academicSession->name ?? 'N/A' }}</td>
-                                        
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $class->students_count }}
-                                        </td>
-                                        
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $class->students_count }}</td>
                                         <td class="px-6 py-4 text-sm text-gray-500">
                                             <div class="flex flex-wrap gap-2">
                                                 @forelse($class->subjects as $subject)
@@ -72,9 +63,13 @@
                                                 @endforelse
                                             </div>
                                         </td>
-                                        
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div class="flex justify-end items-center space-x-3">
+                                                {{-- === NEW BUTTON ADDED HERE === --}}
+                                                <a href="{{ route('admin.class-sections.report', $class) }}" target="_blank" class="font-semibold text-green-600 hover:text-green-900">
+                                                    Report
+                                                </a>
+                                                
                                                 <a href="{{ route('admin.classes.enroll.index', $class) }}" class="font-semibold text-blue-600 hover:text-blue-900">
                                                     Enroll
                                                 </a>

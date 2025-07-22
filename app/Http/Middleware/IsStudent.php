@@ -10,18 +10,13 @@ class IsStudent
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if the user is authenticated and if their role is 'student'
-        if (auth()->check() && auth()->user()->role === 'student') {
-            // If they are a student, allow the request to continue
+        if ($request->user() && $request->user()->role === 'student') {
             return $next($request);
         }
 
-        // If not, block access with a "Forbidden" error
-        abort(403, 'Unauthorized');
+        abort(403, 'UNAUTHORIZED ACTION.');
     }
 }

@@ -18,8 +18,10 @@
                             <a href="{{ route('teacher.gradebook.assessments', [$assignment->classSection, $assignment->subject]) }}" class="inline-flex items-center px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
                                 Back to Assignments
                             </a>
-                            {{-- === NEW BUTTON ADDED HERE === --}}
-                            <a href="{{ route('teacher.class-sections.reports', $assignment->classSection) }}" target="_blank" class="ml-4 inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                            
+                            {{-- === THIS IS THE FIX === --}}
+                            {{-- Changed route name from 'teacher.class-sections.reports' to 'teacher.class-section.report' --}}
+                            <a href="{{ route('teacher.class-section.report', $assignment->classSection) }}" target="_blank" class="ml-4 inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
                                 Generate All Reports
                             </a>
                         </div>
@@ -59,6 +61,7 @@
                                                 @if($studentResult)
                                                     <a href="{{ route('teacher.results.edit', $studentResult) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</a>
                                                 @else
+                                                    {{-- Note: The admin.results.create route might need review if it's meant to be used by teachers --}}
                                                     <a href="{{ route('admin.results.create', ['user_id' => $student->id, 'assessment_id' => $assignment->assessment->id]) }}" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">Add Score</a>
                                                 @endif
                                             </td>

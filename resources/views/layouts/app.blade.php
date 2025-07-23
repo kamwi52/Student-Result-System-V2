@@ -32,6 +32,8 @@
                 {{ $slot }}
             </main>
         </div>
-
-        {{-- === THIS IS THE FIX === --}}
-        {{-- Instead of @stack, we check for and render a 'scripts' slot. --}}
+        
+        {{-- This directive will render the script pushed from the index.blade.php file --}}
+        @stack('scripts')
+    </body>
+</html>

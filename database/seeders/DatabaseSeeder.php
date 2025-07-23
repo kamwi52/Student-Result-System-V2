@@ -13,39 +13,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // === Create the Admin User ===
-        User::create([
-            'name' => 'east',
-            'email' => 'east@test.com',
-            'email_verified_at' => now(), // Mark email as verified
-            'role' => 'admin',
-            'password' => Hash::make('password'),
+        User::firstOrCreate(
+            ['email' => 'east@test.com'],
+            ['name' => 'east', 'email_verified_at' => now(), 'role' => 'admin', 'password' => Hash::make('password')]
+        );
+        User::firstOrCreate(
+            ['email' => 'teach1@test.com'],
+            ['name' => 'teach1', 'email_verified_at' => now(), 'role' => 'teacher', 'password' => Hash::make('password')]
+        );
+        User::firstOrCreate(
+            ['email' => 'stude@test.com'],
+            ['name' => 'student1', 'email_verified_at' => now(), 'role' => 'student', 'password' => Hash::make('password')]
+        );
+        
+        $this->call([
+            GradingScaleSeeder::class,
+            TermSeeder::class, // Renamed from AssessmentTypeSeeder
         ]);
-
-        // === Create the Teacher User ===
-        User::create([
-            'name' => 'teach1',
-            'email' => 'teach1@test.com',
-            'email_verified_at' => now(), // Mark email as verified
-            'role' => 'teacher',
-
-            'password' => Hash::make('password'),
-        ]);
-
-        // === Create the Student User ===
-        User::create([
-            'name' => 'student1',
-            'email' => 'stude@test.com',
-            'email_verified_at' => now(), // Mark email as verified
-            'role' => 'student',
-            'password' => Hash::make('password'),
-        ]);
-
-        // You can create more users using factories if you wish
-        // User::factory(10)->create();
-
-        // === THE FIX: Call the GradingScaleSeeder ===
-        // This will run our new seeder to create the default grading systems.
-        $this->call(GradingScaleSeeder::class);
     }
 }

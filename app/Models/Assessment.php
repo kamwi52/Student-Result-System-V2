@@ -7,14 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Assessment extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     */
     protected $fillable = [
         'name',
         'subject_id',
@@ -25,44 +23,47 @@ class Assessment extends Model
         'class_section_id',
     ];
 
-    /**
-     * An Assessment belongs to one Subject.
-     */
+    protected $casts = [
+        'assessment_date' => 'datetime',
+    ];
+
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);
     }
 
-    /**
-     * Get the academic session that this assessment belongs to.
-     */
     public function academicSession(): BelongsTo
     {
         return $this->belongsTo(AcademicSession::class);
     }
 
-    /**
-     * An Assessment belongs to one ClassSection.
-     */
     public function classSection(): BelongsTo
     {
         return $this->belongsTo(ClassSection::class);
     }
 
-    /**
-     * An assessment has one assignment.
-     * This seems to be where details like type/title are stored.
-     */
     public function assignment(): HasOne
     {
         return $this->hasOne(Assignment::class);
     }
 
-    /**
-     * An assessment can have many results (one for each student).
-     */
     public function results(): HasMany
     {
         return $this->hasMany(Result::class);
+    }
+
+    /**
+     * Get the term for the assessment through the assignment.
+     */
+    public function term(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Term::class,           // The final model we want to access
+            Assignment::class,     // The intermediate model
+            'assessment_id',       // Foreign key on the assignments table (links to Assessment)
+            'id',                  // Foreign key on the terms table (links to Term)
+            'id',                  // Local key on the assessments table
+            'term_id'              // Local key on the assignments table (links to Term)
+        );
     }
 }

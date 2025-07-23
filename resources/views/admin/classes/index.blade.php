@@ -5,11 +5,16 @@
                 {{ __('Manage Classes') }}
             </h2>
             <div class="flex space-x-2">
-                <a href="{{ route('admin.classes.import.show') }}">
-                    <x-secondary-button>
-                        {{ __('Import Classes') }}
-                    </x-secondary-button>
-                </a>
+                {{-- 
+                    ================================================================
+                    === THE "IMPORT CLASSES" BUTTON HAS BEEN REMOVED FROM HERE. ===
+                    ================================================================
+                    <a href="{{ route('admin.classes.import.show') }}">
+                        <x-secondary-button>
+                            {{ __('Import Classes') }}
+                        </x-secondary-button>
+                    </a> 
+                --}}
                 <a href="{{ route('admin.classes.create') }}">
                     <x-primary-button>
                         {{ __('Add New Class') }}
@@ -65,9 +70,9 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div class="flex justify-end items-center space-x-3">
-                                                {{-- === NEW BUTTON ADDED HERE === --}}
-                                                <a href="{{ route('admin.class-sections.report', $class) }}" target="_blank" class="font-semibold text-green-600 hover:text-green-900">
-                                                    Report
+                                                {{-- This link now correctly starts the single-assessment report flow --}}
+                                                <a href="{{ route('admin.reports.show-assessments', $class) }}" class="font-semibold text-green-600 hover:text-green-900">
+                                                    Reports
                                                 </a>
                                                 
                                                 <a href="{{ route('admin.classes.enroll.index', $class) }}" class="font-semibold text-blue-600 hover:text-blue-900">

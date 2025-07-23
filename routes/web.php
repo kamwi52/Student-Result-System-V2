@@ -10,7 +10,8 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ReportCardController;
 
 // Admin Controllers
-use App\Http\Controllers\Admin\ReportingController; // <-- ADD THIS
+use App\Http\Controllers\Admin\ReportingController;
+use App\Http\Controllers\Admin\FinalReportController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ClassSectionController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Admin\AssessmentController;
 use App\Http\Controllers\Admin\ResultController as AdminResultController;
 use App\Http\Controllers\Admin\GradingScaleController;
 use App\Http\Controllers\Admin\AcademicSessionController;
+use App\Http\Controllers\Admin\TermController; // <-- Import the TermController
 
 // Teacher Controllers
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
@@ -58,44 +60,55 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     
     // Management Routes
     Route::resource('users', UserController::class);
-    Route::get('users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
-    Route::post('users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
+    // Optional Import Routes (buttons removed from view)
+    // Route::get('users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
+    // Route::post('users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
+
     Route::resource('subjects', SubjectController::class);
-    Route::get('subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
-    Route::post('subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
+    
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
-    Route::get('classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
-    Route::post('classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
+    // Optional Import Routes (buttons removed from view)
+    // Route::get('classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
+    // Route::post('classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
+    
     Route::resource('assessments', AssessmentController::class);
-    Route::get('results/import/step-1', [AdminResultController::class, 'showImportStep1'])->name('results.import.step1');
-    Route::post('results/import/step-2', [AdminResultController::class, 'showImportStep2'])->name('results.import.step2');
-    Route::post('results/import/process', [AdminResultController::class, 'handleImport'])->name('results.import.process');
     Route::resource('results', AdminResultController::class);
     
     // Settings Routes
     Route::resource('grading-scales', GradingScaleController::class);
     Route::resource('academic-sessions', AcademicSessionController::class);
+
+    // ========================================================================
+    // --- NEW: TERM MANAGEMENT ROUTE ---
+    // This creates all necessary routes (index, create, store, edit, etc.) for managing terms.
+    // ========================================================================
+    Route::resource('terms', TermController::class);
     
-    // --- REPORTING ROUTES FOR ADMIN ---
-    Route::get('/reports', [ReportingController::class, 'index'])->name('reports.index'); // <-- ADD THIS
-    Route::get('/students/{student}/report', [ReportCardController::class, 'generateForAdmin'])->name('students.report');
-    Route::get('/class-sections/{classSection}/report', [ReportCardController::class, 'generateForClass'])->name('class-sections.report');
+    // --- SINGLE ASSESSMENT REPORTING WORKFLOW (Teacher-style) ---
+    Route::get('/reports/{classSection}/assessments', [ReportingController::class, 'showAssessments'])->name('reports.show-assessments');
+    Route::get('/reports/assessments/{assessment}/results', [ReportingController::class, 'showResults'])->name('reports.show-results');
+    Route::post('/reports/generate-bulk', [ReportingController::class, 'generateBulkReport'])->name('reports.generate-bulk');
+    Route::get('/reports/download', [ReportingController::class, 'downloadReport'])->middleware('signed')->name('reports.download');
+
+
+    // --- COMPREHENSIVE RANKED REPORT CARD WORKFLOW ---
+    Route::prefix('final-reports')->name('final-reports.')->group(function() {
+        Route::get('/', [FinalReportController::class, 'index'])->name('index');
+        Route::get('/show-students', [FinalReportController::class, 'showStudents'])->name('show-students');
+        Route::post('/generate', [FinalReportController::class, 'generate'])->name('generate');
+    });
+
 });
 
 // Teacher Routes
 Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
     Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
+    Route::post('/reports/generate-bulk', [ReportCardController::class, 'generateBulkForTeacher'])->name('reports.generate-bulk');
     Route::get('gradebook/{classSection}/{subject}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
     Route::get('assignments/{assignment}/results', [GradebookController::class, 'showResults'])->name('assignments.results');
-    Route::get('/assignments/{assignment}/bulk-edit', [BulkGradeController::class, 'edit'])->name('grades.bulk-edit');
-    Route::put('/assignments/{assignment}/bulk-update', [BulkGradeController::class, 'update'])->name('grades.bulk-update');
-    Route::get('/results/{result}/edit', [TeacherResultController::class, 'edit'])->name('results.edit');
-    Route::put('/results/{result}', [TeacherResultController::class, 'update'])->name('results.update');
-    Route::get('/students/{student}/report', [ReportCardController::class, 'generateForTeacher'])->name('students.report');
-    Route::get('/class-sections/{classSection}/report', [ReportCardController::class, 'generateForClass'])->name('class-section.report');
 });
 
 // Student Routes

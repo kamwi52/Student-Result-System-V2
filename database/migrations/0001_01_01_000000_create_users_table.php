@@ -15,11 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            // =========================================================
-            //  THIS IS THE LINE TO ADD
-            // =========================================================
-            $table->string('role')->default('student');
-            // =========================================================
+            $table->string('role')->default('student'); // The role column is now included.
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

@@ -11,11 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // STEP 1: Create the parent 'grading_scales' table FIRST.
+        Schema::create('grading_scales', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique(); // e.g., 'Standard Letter Grades', 'Pass/Fail'
+            $table->string('description')->nullable();
+            $table->timestamps();
+        });
+
+        // STEP 2: Now that 'grading_scales' exists, create the 'grades' table that links to it.
         Schema::create('grades', function (Blueprint $table) {
             $table->id();
 
             // This links each grade to its parent grading scale.
-            // If the parent scale is deleted, all its grades are also deleted.
+            // This will now work because the 'grading_scales' table exists.
             $table->foreignId('grading_scale_id')->constrained('grading_scales')->onDelete('cascade');
 
             $table->string('grade_name');       // The name of the grade, e.g., 'A+', 'B', 'Pass'
@@ -32,6 +41,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drop tables in the reverse order of creation to respect foreign keys.
         Schema::dropIfExists('grades');
+        Schema::dropIfExists('grading_scales');
     }
 };

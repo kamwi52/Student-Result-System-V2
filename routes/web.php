@@ -20,7 +20,7 @@ use App\Http\Controllers\Admin\AssessmentController;
 use App\Http\Controllers\Admin\ResultController as AdminResultController;
 use App\Http\Controllers\Admin\GradingScaleController;
 use App\Http\Controllers\Admin\AcademicSessionController;
-use App\Http\Controllers\Admin\TermController; // <-- Import the TermController
+use App\Http\Controllers\Admin\TermController;
 
 // Teacher Controllers
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
@@ -59,10 +59,10 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
     
     // Management Routes
+    // Specific routes must come BEFORE the general resource route.
+    Route::get('users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
+    Route::post('users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
     Route::resource('users', UserController::class);
-    // Optional Import Routes (buttons removed from view)
-    // Route::get('users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
-    // Route::post('users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
 
     Route::resource('subjects', SubjectController::class);
     

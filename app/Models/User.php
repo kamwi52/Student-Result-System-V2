@@ -7,18 +7,42 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough; // <-- ADD THIS LINE
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * === THE FIX IS HERE ===
+     * We remove 'profile_photo_path' to prevent the application from trying
+     * to update a database column that does not exist.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'email_verified_at', 'profile_photo_path',
+        'name',
+        'email',
+        'password',
+        'role',
+        'email_verified_at',
+        // 'profile_photo_path', // <-- THIS LINE HAS BEEN REMOVED
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
     protected $hidden = ['password', 'remember_token'];
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -39,46 +63,31 @@ class User extends Authenticatable
         return $this->hasMany(Enrollment::class, 'user_id');
     }
     
-    /**
-     * === FIX: Get the student's primary class section through their enrollment. ===
-     * This defines the missing 'classSection' relationship needed for the report card.
-     */
     public function classSection(): HasOneThrough
     {
-        // This tells Laravel: "To find this user's ClassSection, look through the Enrollment model."
-        // It connects users.id -> enrollments.user_id -> enrollments.class_section_id -> class_sections.id
         return $this->hasOneThrough(
-            ClassSection::class,    // The final model we want
-            Enrollment::class,      // The intermediate model
-            'user_id',              // Foreign key on 'enrollments' table (for User)
-            'id',                   // Foreign key on 'class_sections' table (for Enrollment)
-            'id',                   // Local key on 'users' table
-            'class_section_id'      // Local key on 'enrollments' table
+            ClassSection::class,
+            Enrollment::class,
+            'user_id',
+            'id',
+            'id',
+            'class_section_id'
         );
     }
 
 
     // --- Teacher-specific relationships ---
 
-    /**
-     * Get the classes that this user (teacher) is assigned to as a general class teacher.
-     */
     public function taughtClasses(): BelongsToMany
     {
         return $this->belongsToMany(ClassSection::class, 'class_section_teacher');
     }
 
-    /**
-     * Get the specific assignments that this user (teacher) is responsible for.
-     */
     public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class, 'teacher_id');
     }
 
-    /**
-     * Get the subjects this user (teacher) is qualified to teach.
-     */
     public function qualifiedSubjects(): BelongsToMany
     {
         return $this->belongsToMany(Subject::class, 'subject_user', 'user_id', 'subject_id');

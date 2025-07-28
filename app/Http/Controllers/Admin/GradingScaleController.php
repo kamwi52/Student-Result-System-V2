@@ -16,7 +16,11 @@ class GradingScaleController extends Controller
      */
     public function index(): View
     {
-        $scales = GradingScale::withCount('grades')->latest()->get();
+        // === THE FIX IS HERE ===
+        // We change ->get() to ->paginate() to fetch the results in chunks.
+        // This returns a Paginator instance, which the view's ->links() method can use.
+        $scales = GradingScale::withCount('grades')->latest()->paginate(10); // Using 10 items per page
+
         return view('admin.grading-scales.index', compact('scales'));
     }
 

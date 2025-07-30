@@ -24,9 +24,19 @@
                     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/></svg>
                 </button>
                 <ul id="dropdown-management" class="hidden py-2 space-y-2">
+                    {{-- Link to User Management --}}
                     <li><a href="{{ route('admin.users.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">User Management</a></li>
-                    <li><a href="{{ route('admin.classes.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Class & Subject Mgt</a></li>
+                    
+                    {{-- === EDITED: Renamed link for clarity === --}}
+                    <li><a href="{{ route('admin.classes.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Class Management</a></li>
+
+                    {{-- === ADDED: New link for Subject Management === --}}
+                    <li><a href="{{ route('admin.subjects.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Subject Management</a></li>
+
+                    {{-- Link to Assessment Management --}}
                     <li><a href="{{ route('admin.assessments.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Assessment Management</a></li>
+
+                    {{-- Link to Result Management --}}
                     <li><a href="{{ route('admin.results.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Result Management</a></li>
                 </ul>
             </li>

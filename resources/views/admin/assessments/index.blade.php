@@ -12,29 +12,18 @@
             
             {{-- Action Buttons --}}
             <div class="flex items-center justify-end mb-4">
+                {{-- === ADDED: New Import Button === --}}
+                <a href="{{ route('admin.assessments.import.show') }}" class="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-600 dark:hover:bg-gray-700 focus:outline-none dark:focus:ring-gray-800">
+                    Import Assessments
+                </a>
+                
                 <a href="{{ route('admin.assessments.create') }}" class="focus:outline-none text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
                     New Assessment
                 </a>
             </div>
 
-            {{-- Success/Error Messages --}}
-            @if(session('success'))
-                <div id="alert-3" class="flex items-center p-4 mb-4 text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">
-                    <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-                    </svg>
-                    <span class="sr-only">Info</span>
-                    <div class="ms-3 text-sm font-medium">
-                        {{ session('success') }}
-                    </div>
-                    <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-gray-700" data-dismiss-target="#alert-3" aria-label="Close">
-                        <span class="sr-only">Close</span>
-                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                        </svg>
-                    </button>
-                </div>
-            @endif
+            <x-success-message />
+            <x-error-message />
 
             {{-- Assessments Table --}}
             <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
@@ -44,7 +33,6 @@
                             <th scope="col" class="px-6 py-3">Name</th>
                             <th scope="col" class="px-6 py-3">Subject</th>
                             <th scope="col" class="px-6 py-3">Class</th>
-                            <th scope="col" class="px-6 py-3">Teacher</th>
                             <th scope="col" class="px-6 py-3">Date</th>
                             <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
                         </tr>
@@ -55,9 +43,8 @@
                                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                     {{ $assessment->name }}
                                 </th>
-                                <td class="px-6 py-4">{{ $assessment->subject->name }}</td>
+                                <td class="px-6 py-4">{{ $assessment->subject->name ?? 'N/A' }}</td>
                                 <td class="px-6 py-4">{{ $assessment->classSection->name ?? 'N/A' }}</td>
-                                <td class="px-6 py-4">{{ $assessment->teacher->name ?? 'N/A' }}</td>
                                 <td class="px-6 py-4">{{ $assessment->assessment_date }}</td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end items-center space-x-4">
@@ -72,7 +59,7 @@
                             </tr>
                         @empty
                             <tr class="bg-white border-b dark:bg-gray-800">
-                                <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                     No assessments found.
                                 </td>
                             </tr>

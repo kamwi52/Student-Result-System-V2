@@ -1,117 +1,138 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
+namespace App\Http\Controllers\Admin;
 
-// Import all controllers
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Auth\PasswordController;
-use App\Http\Controllers\ReportCardController;
+use App\Http\Controllers\Controller;
+use App\Models\Result;
+use App\Models\Assessment;
+use App\Models\ClassSection;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
-// Admin Controllers
-use App\Http\Controllers\Admin\ReportingController;
-use App\Http\Controllers\Admin\FinalReportController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\SubjectController;
-use App\Http\Controllers\Admin\ClassSectionController;
-use App\Http\Controllers\Admin\EnrollmentController;
-use App\Http\Controllers\Admin\AssessmentController;
-use App\Http\Controllers\Admin\ResultController as AdminResultController;
-use App\Http\Controllers\Admin\GradingScaleController;
-use App\Http\Controllers\Admin\AcademicSessionController;
-use App\Http\Controllers\Admin\TermController;
+class ResultController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(): View
+    {
+        $results = Result::with(['student', 'assessment.subject'])->latest()->paginate(10);
+        return view('admin.results.index', compact('results'));
+    }
 
-// Teacher Controllers
-use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
-use App\Http\Controllers\Teacher\BulkGradeController;
-use App\Http\Controllers\Teacher\GradebookController;
-use App\Http\Controllers\Teacher\ResultController as TeacherResultController;
-use App\Http\Controllers\Teacher\AssignmentController;
+    // ... (Your create, store, edit, update, destroy methods are likely here and can remain)
 
-// Student Controllers
-use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
+    /**
+     * === NEW/EDITED: Show Step 1 of the import process (Class Selection). ===
+     */
+    public function showImportStep1(): View
+    {
+        $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
+        return view('admin.results.import-step1', compact('classSections'));
+    }
 
-// === FIX: Import the Middleware Classes ===
-use App\Http\Middleware\IsAdmin;
-use App\Http\Middleware\IsTeacher;
-use App\Http\Middleware\IsStudent;
-// ==========================================
+    /**
+     * === NEW/EDITED: Handle the submission from Step 1 and redirect to Step 2. ===
+     */
+    public function handleImportStep1(Request $request)
+    {
+        $validated = $request->validate([
+            'class_section_id' => 'required|exists:class_sections,id',
+        ]);
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-*/
+        // Redirect to the second step, passing the chosen class ID in the URL.
+        return redirect()->route('admin.results.import.show_step2', ['classSection' => $validated['class_section_id']]);
+    }
 
-Route::get('/', function () {
-    return view('welcome');
-});
+    /**
+     * === NEW/EDITED: Show Step 2 of the import process (Assessment & File Upload). ===
+     */
+    public function showImportStep2(ClassSection $classSection): View
+    {
+        // Find all assessments that are linked to the selected class.
+        $assessments = Assessment::where('class_section_id', $classSection->id)
+                                 ->with('subject')
+                                 ->orderBy('name')
+                                 ->get();
+        
+        return view('admin.results.import-step2', compact('classSection', 'assessments'));
+    }
 
-Auth::routes();
+    /**
+     * === NEW/EDITED: Process the final CSV upload for results. ===
+     */
+    public function processImport(Request $request, ClassSection $classSection)
+    {
+        $validated = $request->validate([
+            'assessment_id' => 'required|exists:assessments,id',
+            'file' => 'required|file|mimes:csv,txt',
+        ]);
 
-Route::get('/home', [HomeController::class, 'index'])->name('home');
-Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+        $records = array_map('str_getcsv', file($path));
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
-});
+        if (count($records) <= 1) {
+            return redirect()->back()->with('error', 'The file is empty or invalid.');
+        }
 
-// Admin Routes
-// === FIX: Use the full class name for the middleware ===
-Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
-    
-    // Management Routes
-    Route::get('users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
-    Route::post('users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
-    Route::resource('users', UserController::class);
+        $header = array_map('trim', array_shift($records));
+        $requiredColumns = ['student_email', 'score'];
 
-    Route::resource('subjects', SubjectController::class);
-    
-    Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
-    Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
-    Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
-    
-    Route::resource('assessments', AssessmentController::class);
-    Route::resource('results', AdminResultController::class);
-    
-    // Settings Routes
-    Route::resource('grading-scales', GradingScaleController::class);
-    Route::resource('academic-sessions', AcademicSessionController::class);
-    Route::resource('terms', TermController::class);
-    
-    // Reporting Routes
-    Route::get('/reports/{classSection}/assessments', [ReportingController::class, 'showAssessments'])->name('reports.show-assessments');
-    Route::get('/reports/assessments/{assessment}/results', [ReportingController::class, 'showResults'])->name('reports.show-results');
-    Route::post('/reports/generate-bulk', [ReportingController::class, 'generateBulkReport'])->name('reports.generate-bulk');
-    Route::get('/reports/download', [ReportingController::class, 'downloadReport'])->middleware('signed')->name('reports.download');
+        if (count(array_diff($requiredColumns, $header)) > 0) {
+            return redirect()->back()->with('error', 'Invalid CSV header. Must contain: student_email, score');
+        }
 
-    Route::prefix('final-reports')->name('final-reports.')->group(function() {
-        Route::get('/', [FinalReportController::class, 'index'])->name('index');
-        Route::get('/show-students', [FinalReportController::class, 'showStudents'])->name('show-students');
-        Route::post('/generate', [FinalReportController::class, 'generate'])->name('generate');
-    });
+        $importErrors = [];
+        $successCount = 0;
+        $assessment = Assessment::find($validated['assessment_id']);
 
-});
+        DB::beginTransaction();
+        try {
+            foreach ($records as $key => $row) {
+                $rowNumber = $key + 2;
+                if (empty(implode('', $row))) continue;
+                
+                $data = array_combine($header, $row);
 
-// Teacher Routes
-// === FIX: Use the full class name for the middleware ===
-Route::middleware(['auth', IsTeacher::class])->prefix('teacher')->name('teacher.')->group(function () {
-    Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
-    Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
-    Route::post('/reports/generate-bulk', [ReportCardController::class, 'generateBulkForTeacher'])->name('reports.generate-bulk');
-    Route::get('gradebook/{classSection}/{subject}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
-    Route::get('assignments/{assignment}/results', [GradebookController::class, 'showResults'])->name('assignments.results');
-});
+                $student = User::where('email', $data['student_email'])->where('role', 'student')->first();
+                if (!$student) {
+                    $importErrors[] = "Row {$rowNumber}: Student with email '{$data['student_email']}' not found.";
+                    continue;
+                }
+                
+                // Use updateOrCreate to prevent duplicate results.
+                // It will find a result for this student in this assessment and update it,
+                // or it will create a new one if it doesn't exist.
+                Result::updateOrCreate(
+                    [
+                        'user_id' => $student->id,
+                        'assessment_id' => $assessment->id,
+                    ],
+                    [
+                        'score' => $data['score'],
+                        // You can add a 'remark' column to your CSV and table if needed
+                        // 'remark' => $data['remark'] ?? null, 
+                    ]
+                );
+                $successCount++;
+            }
 
-// Student Routes
-// === FIX: Use the full class name for the middleware ===
-Route::middleware(['auth', IsStudent::class])->prefix('student')->name('student.')->group(function () {
-    Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/classes/{classSection}/results', [StudentDashboardController::class, 'showResults'])->name('class.results');
-    Route::get('/my-report', [ReportCardController::class, 'generateForStudent'])->name('my.report');
-});
+            if (!empty($importErrors)) {
+                DB::rollBack();
+                return redirect()->back()->with('import_errors', $importErrors);
+            }
+
+            DB::commit();
+            return redirect()->route('admin.results.index')->with('success', "Import complete! {$successCount} results were created or updated.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Result Import Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An unexpected error occurred during the import.');
+        }
+    }
+}

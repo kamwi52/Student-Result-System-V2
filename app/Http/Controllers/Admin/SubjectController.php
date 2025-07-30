@@ -4,66 +4,91 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subject;
+use App\Models\User; // <-- ADDED: To fetch teacher data
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Illuminate\Support\Facades\DB; // For database transactions
-use Exception; // To catch generic exceptions
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class SubjectController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * === UPDATED: Now counts assigned teachers for the index page ===
      */
     public function index(): View
     {
-        $subjects = Subject::latest()->paginate(10);
+        $subjects = Subject::withCount('teachers')->latest()->paginate(10);
         return view('admin.subjects.index', compact('subjects'));
     }
 
     /**
      * Show the form for creating a new resource.
+     * === UPDATED: Fetches teachers for the creation form ===
      */
     public function create(): View
     {
-        return view('admin.subjects.create');
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        return view('admin.subjects.create', compact('teachers'));
     }
 
     /**
      * Store a newly created resource in storage.
+     * === UPDATED: Handles teacher assignments on creation ===
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255|unique:subjects',
             'code' => 'required|string|max:20|unique:subjects',
             'description' => 'nullable|string',
+            'teachers' => 'nullable|array',
+            'teachers.*' => 'exists:users,id',
         ]);
 
-        Subject::create($request->all());
+        DB::transaction(function () use ($validated, $request) {
+            $subject = Subject::create($request->only('name', 'code', 'description'));
 
-        return redirect()->route('admin.subjects.index')->with('success', 'Subject created successfully.');
+            if (!empty($validated['teachers'])) {
+                $subject->teachers()->sync($validated['teachers']);
+            }
+        });
+
+        return redirect()->route('admin.subjects.index')->with('success', 'Subject created and teachers assigned successfully.');
     }
 
     /**
      * Show the form for editing the specified resource.
+     * === UPDATED: Fetches teachers and current assignments for the edit form ===
      */
     public function edit(Subject $subject): View
     {
-        return view('admin.subjects.edit', compact('subject'));
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        $subject->load('teachers'); // Eager load existing assignments
+
+        return view('admin.subjects.edit', compact('subject', 'teachers'));
     }
 
     /**
      * Update the specified resource in storage.
+     * === UPDATED: Handles teacher assignments on update ===
      */
     public function update(Request $request, Subject $subject)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255|unique:subjects,name,' . $subject->id,
             'code' => 'required|string|max:20|unique:subjects,code,' . $subject->id,
             'description' => 'nullable|string',
+            'teachers' => 'nullable|array',
+            'teachers.*' => 'exists:users,id',
         ]);
 
-        $subject->update($request->all());
+        DB::transaction(function () use ($request, $subject) {
+            $subject->update($request->only('name', 'code', 'description'));
+
+            // Sync will automatically add/remove teachers based on the checkboxes.
+            $subject->teachers()->sync($request->input('teachers', []));
+        });
 
         return redirect()->route('admin.subjects.index')->with('success', 'Subject updated successfully.');
     }
@@ -87,11 +112,9 @@ class SubjectController extends Controller
 
     /**
      * Handle the import of subjects from a spreadsheet.
-     * This is your custom, robust CSV import logic.
      */
     public function handleImport(Request $request)
     {
-        // Your controller expects the file input to be named 'subjects_file'
         $request->validate(['subjects_file' => 'required|file|mimes:csv,txt']);
     
         try {
@@ -100,15 +123,12 @@ class SubjectController extends Controller
             $records = array_map('str_getcsv', file($path));
     
             if (count($records) < 1) {
-                // Using 'import_error' (singular) for a general error
                 return redirect()->back()->with('import_error', 'The uploaded file is empty or invalid.');
             }
     
-            // Clean the header by trimming whitespace from each column name
             $header = array_map('trim', array_shift($records));
             $requiredColumns = ['name', 'code', 'description'];
     
-            // Strict check for header columns and their order
             if ($header !== $requiredColumns) {
                 $expected = implode(', ', $requiredColumns);
                 $actual = implode(', ', $header);
@@ -118,12 +138,11 @@ class SubjectController extends Controller
             $import_errors = [];
             $success_count = 0;
     
-            // Process each row
             foreach ($records as $key => $row) {
                 if (count($row) !== count($header) || empty(implode('', $row))) {
-                    continue; // Skip empty rows or rows with incorrect column count
+                    continue; 
                 }
-                $rowNumber = $key + 2; // +1 for header, +1 for 0-index
+                $rowNumber = $key + 2;
                 
                 DB::beginTransaction();
                 try {
@@ -147,13 +166,11 @@ class SubjectController extends Controller
             
             $message = "Import process finished. Successfully created {$success_count} subjects.";
             
-            // Return to the index page with a success message and any specific row errors
             return redirect()->route('admin.subjects.index')
                              ->with('success', $message)
-                             ->with('import_errors', $import_errors); // This will be an array of error strings
+                             ->with('import_errors', $import_errors);
                              
         } catch (Exception $e) {
-            // Catches general errors like invalid headers or file read issues
             return redirect()->back()->with('import_error', 'An unexpected error occurred: ' . $e->getMessage());
         }
     }

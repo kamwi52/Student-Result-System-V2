@@ -8,7 +8,7 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Models\AcademicSession;
 use App\Models\GradingScale;
-use Illuminate\Http\Request;
+use Illuminate\Http\Request; // This is important for the search functionality
 use Illuminate\View\View;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -19,14 +19,28 @@ class ClassSectionController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * === THIS METHOD HAS BEEN UPDATED TO HANDLE SEARCHING ===
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $classes = ClassSection::with(['academicSession', 'subjects'])
-                                ->withCount('students')
-                                ->latest()
-                                ->paginate(10);
+        // 1. Start the base query for ClassSection.
+        $query = ClassSection::query();
 
+        // 2. Check if a search term was submitted in the request.
+        if ($request->filled('search')) {
+            $searchTerm = $request->input('search');
+            // If so, add a WHERE clause to filter by the class name.
+            $query->where('name', 'LIKE', "%{$searchTerm}%");
+        }
+
+        // 3. Continue building the query with relationships and counts, then paginate the results.
+        $classes = $query->with(['academicSession', 'subjects'])
+                         ->withCount('students')
+                         ->latest()
+                         ->paginate(10);
+
+        // 4. Pass the (potentially filtered) paginated results to the view.
         return view('admin.classes.index', compact('classes'));
     }
 
@@ -153,13 +167,11 @@ class ClassSectionController extends Controller
      */
     public function handleImport(Request $request)
     {
-        // --- EDITED: Using 'file' for consistency with other import forms ---
         $request->validate([
             'file' => 'required|file|mimes:csv,txt',
         ]);
 
         try {
-            // --- EDITED: Using 'file' for consistency ---
             $file = $request->file('file');
             $file_handle = fopen($file->getRealPath(), 'r');
             if ($file_handle === false) {
@@ -187,7 +199,6 @@ class ClassSectionController extends Controller
                 $data = array_combine($header, array_map('trim', $row));
 
                 try {
-                    // Using updateOrCreate is great for syncing data
                     ClassSection::updateOrCreate(
                         [
                             'name' => $data['name'],

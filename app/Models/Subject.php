@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany; // Make sure this is present
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subject extends Model
@@ -16,7 +16,8 @@ class Subject extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = ['name', 'code']; // Assuming 'code' is also a fillable field for subjects
+    // === UPDATED: Added 'description' to make sure all form fields can be saved ===
+    protected $fillable = ['name', 'code', 'description'];
 
     /**
      * The assignments that belong to this subject.
@@ -37,8 +38,11 @@ class Subject extends Model
     /**
      * Get the teachers who are qualified to teach this subject.
      * This links to the 'subject_user' pivot table.
+     *
+     * === UPDATED: Renamed from 'qualifiedTeachers' to 'teachers' ===
+     * This name now matches the logic in the SubjectController (`withCount('teachers')`)
      */
-    public function qualifiedTeachers(): BelongsToMany
+    public function teachers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'subject_user', 'subject_id', 'user_id');
     }

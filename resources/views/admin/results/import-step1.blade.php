@@ -1,66 +1,42 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Import Student Results') }}
-        </h2>
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                {{ __('Import Results - Step 1: Select Class') }}
+            </h2>
+            <a href="{{ route('admin.results.index') }}" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                ← Back to Results
+            </a>
+        </div>
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
+        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-md sm:rounded-lg">
+                <div class="p-6">
+                    <p class="text-gray-600 dark:text-gray-400 mb-6">
+                        Please select the class for which you want to import assessment results.
+                    </p>
 
-                    {{-- Display Import Errors --}}
-                    @if(session('import_error'))
-                        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-                            <p class="font-bold">Import Failed!</p>
-                            <p>{{ session('import_error') }}</p>
-                        </div>
-                    @endif
-                    @if(session('import_errors'))
-                        <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4" role="alert">
-                            <p class="font-bold">Please fix these errors in your file:</p>
-                            <ul class="mt-2 list-disc list-inside text-sm">
-                                @foreach(session('import_errors') as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-                    
-                    <form method="POST" action="{{ route('admin.results.import.process') }}" enctype="multipart/form-data">
+                    {{-- === THE FIX: Form action points to the 'prepare_step2' route === --}}
+                    <form method="POST" action="{{ route('admin.results.import.prepare_step2') }}">
                         @csrf
-
-                        <!-- Step 1: Select Assessment -->
-                        <div class="mb-6">
-                            <x-input-label for="assessment_id" :value="__('Step 1: Choose an Assessment')" class="text-lg" />
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Select the assessment for which you are importing scores.</p>
-                            <select name="assessment_id" id="assessment_id" class="block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
-                                <option value="">-- Please select an assessment --</option>
-                                @foreach($assessments as $assessment)
-                                    <option value="{{ $assessment->id }}" {{ old('assessment_id') == $assessment->id ? 'selected' : '' }}>
-                                        {{ $assessment->classSection->name }} - {{ $assessment->subject->name }} - {{ $assessment->name }}
-                                    </option>
+                        
+                        <div>
+                            <label for="class_section_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Class Section</label>
+                            <select id="class_section_id" name="class_section_id" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">-- Select a class --</option>
+                                @foreach($classSections as $class)
+                                    <option value="{{ $class->id }}">{{ $class->name }} ({{ $class->academicSession->name }})</option>
                                 @endforeach
                             </select>
-                            <x-input-error :messages="$errors->get('assessment_id')" class="mt-2" />
-                        </div>
-                        
-                        <!-- Step 2: Upload File -->
-                        <div>
-                             <x-input-label for="file" :value="__('Step 2: Upload Results File')" class="text-lg" />
-                             <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Your file must have a header row with columns: `student_email` and `score`.</p>
-                            <x-text-input id="file" class="block w-full mt-1" type="file" name="file" required accept=".xlsx,.csv,.xls" />
-                            <x-input-error :messages="$errors->get('file')" class="mt-2" />
+                            <x-input-error :messages="$errors->get('class_section_id')" class="mt-2" />
                         </div>
 
                         <div class="flex items-center justify-end mt-6">
-                             <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md" href="{{ route('admin.results.index') }}">
-                                {{ __('Cancel') }}
-                            </a>
-                            <x-primary-button class="ms-4">
-                                {{ __('Import Results') }}
-                            </x-primary-button>
+                            <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700">
+                                Next: Select Assessment & Upload File →
+                            </button>
                         </div>
                     </form>
                 </div>

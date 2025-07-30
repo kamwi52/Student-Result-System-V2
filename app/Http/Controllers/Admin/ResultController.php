@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Result;
 use App\Models\ClassSection;
-use App\Models\Assessment; // Corrected from Assignment to Assessment based on context
+use App\Models\Assessment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,10 +32,7 @@ class ResultController extends Controller
     {
         $students = User::where('role', 'student')->orderBy('name')->get();
         $assessments = Assessment::with(['subject', 'classSection'])->orderBy('name')->get();
-        $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
-
-        // --- EDITED: Changed assignments to assessments  ---
-        return view('admin.results.create', compact('students', 'assessments', 'classSections'));
+        return view('admin.results.create', compact('students', 'assessments'));
     }
 
     /**
@@ -50,19 +47,12 @@ class ResultController extends Controller
             'comments' => 'nullable|string|max:1000',
         ]);
 
-        // Check if a result already exists for this user and assessment
-        $existingResult = Result::where('user_id', $validated['user_id'])
-            ->where('assessment_id', $validated['assessment_id'])
-            ->first();
-
-        if ($existingResult) {
-            // A result already exists, so display an error message
-            return back()->withErrors(['message' => 'You have already submitted a result for this assessment.']);
-        } else {
-            // No existing result, so create a new one
-            Result::create($validated);
-            return redirect()->route('admin.results.index')->with('success', 'Result added successfully.');
+        if (Result::where('user_id', $validated['user_id'])->where('assessment_id', $validated['assessment_id'])->exists()) {
+            return back()->with('error', 'A result for this student and assessment already exists. Please edit the existing result.');
         }
+
+        Result::create($validated);
+        return redirect()->route('admin.results.index')->with('success', 'Result added successfully.');
     }
 
     /**
@@ -72,11 +62,8 @@ class ResultController extends Controller
     {
         $students = User::where('role', 'student')->orderBy('name')->get();
         $assessments = Assessment::with(['subject', 'classSection'])->orderBy('name')->get();
-        $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
-
         $result->load(['student', 'assessment']);
-        // --- EDITED: Changed assignments to assessments for edit too ---
-        return view('admin.results.edit', compact('result', 'students', 'assessments', 'classSections'));
+        return view('admin.results.edit', compact('result', 'students', 'assessments'));
     }
 
     /**
@@ -104,113 +91,101 @@ class ResultController extends Controller
     }
 
     /**
-     * Step 1: Show the form to select an assessment for import.
+     * === CORRECTED: Show Step 1 of the import process (Class Selection). ===
      */
     public function showImportStep1(): View
     {
-        $assessments = Assessment::with(['classSection', 'subject'])->orderBy('name')->get();
-        return view('admin.results.import-step1', compact('assessments'));
+        $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
+        return view('admin.results.import-step1', compact('classSections'));
     }
 
     /**
-     * Step 2: This method is now handled by the form in step 1 and the handleImport method.
-     * We can keep it for future expansion or remove it if a single form is sufficient.
-     * For now, the logic is combined into handleImport.
+     * === CORRECTED: Handle the submission from Step 1 and redirect to Step 2. ===
      */
-    public function showImportStep2(Request $request)
+    public function handleImportStep1(Request $request)
     {
-        return redirect()->route('admin.results.import.step1');
+        $validated = $request->validate([
+            'class_section_id' => 'required|exists:class_sections,id',
+        ]);
+
+        return redirect()->route('admin.results.import.show_step2', ['classSection' => $validated['class_section_id']]);
     }
 
     /**
-     * Step 3: Handle the final file upload and import process.
+     * === CORRECTED: Show Step 2 of the import process (Assessment & File Upload). ===
      */
-    public function handleImport(Request $request)
+    public function showImportStep2(ClassSection $classSection): View
     {
-        $request->validate([
+        $assessments = Assessment::where('class_section_id', $classSection->id)
+                                 ->with('subject')
+                                 ->orderBy('name')
+                                 ->get();
+        
+        return view('admin.results.import-step2', compact('classSection', 'assessments'));
+    }
+
+    /**
+     * === CORRECTED: Process the final CSV upload for results. ===
+     */
+    public function processImport(Request $request, ClassSection $classSection)
+    {
+        $validated = $request->validate([
             'assessment_id' => 'required|exists:assessments,id',
             'file' => 'required|file|mimes:csv,txt',
         ]);
 
-        Log::info('--- RESULT IMPORT PROCESS STARTED ---');
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+        $records = array_map('str_getcsv', file($path));
 
-        $assessment = Assessment::with('classSection.students')->findOrFail($request->assessment_id);
-        $enrolledStudentEmails = $assessment->classSection->students->pluck('email')->flip();
+        if (count($records) <= 1) {
+            return redirect()->back()->with('error', 'The file is empty or invalid.');
+        }
 
+        $header = array_map('trim', array_shift($records));
+        $requiredColumns = ['student_email', 'score']; // Optional: add 'comments'
+
+        if (count(array_diff($requiredColumns, $header)) > 0) {
+            return redirect()->back()->with('error', 'Invalid CSV header. Must contain at least: student_email, score');
+        }
+
+        $importErrors = [];
+        $successCount = 0;
+        $assessment = Assessment::find($validated['assessment_id']);
+
+        DB::beginTransaction();
         try {
-            $file = $request->file('file');
-            $file_handle = fopen($file->getRealPath(), 'r');
-            if ($file_handle === false) {
-                throw new \Exception("Could not open the uploaded file.");
-            }
-
-            $header = array_map('trim', fgetcsv($file_handle));
-            $requiredColumns = ['student_email', 'score', 'comments'];
-            if ($header !== $requiredColumns) {
-                fclose($file_handle);
-                throw new \Exception("Invalid CSV header. Expected: 'student_email,score,comments'. Found: '" . implode(',', $header) . "'.");
-            }
-
-            $import_errors = [];
-            $success_count = 0;
-            $rowNumber = 1;
-
-            while (($row = fgetcsv($file_handle, 1000, ",")) !== false) {
-                $rowNumber++;
+            foreach ($records as $key => $row) {
+                $rowNumber = $key + 2;
                 if (empty(implode('', $row))) continue;
-                $data = array_combine($header, array_map('trim', $row));
+                
+                $data = array_combine($header, $row);
 
-                DB::beginTransaction();
-                try {
-                    $student = User::where('email', $data['student_email'])->first();
-
-                    if (!$student) {
-                        throw new \Exception("Student with email '{$data['student_email']}' not found.");
-                    }
-                    if (!$enrolledStudentEmails->has($data['student_email'])) {
-                        throw new \Exception("Student '{$data['student_email']}' is not enrolled in the required class '{$assessment->classSection->name}'.");
-                    }
-                    if (!is_numeric($data['score'])) {
-                        throw new \Exception("Score '{$data['score']}' is not a valid number.");
-                    }
-
-                    // Check if a result already exists for this user and assessment in the import
-                    $existingResult = Result::where('user_id', $student->id)
-                        ->where('assessment_id', $assessment->id)
-                        ->first();
-                    if ($existingResult) {
-                        $existingResult->update([
-                            'score' => $data['score'],
-                            'comments' => $data['comments'] ?? null
-                        ]);
-                        $success_count++;
-                    } else {
-
-
-                        Result::updateOrCreate(
-                            ['user_id' => $student->id, 'assessment_id' => $assessment->id],
-                            ['score' => $data['score'], 'comments' => $data['comments'] ?? null]
-                        );
-                        $success_count++;
-                    }
-
-                    DB::commit();
-
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    $import_errors[] = "Row {$rowNumber}: " . $e->getMessage();
-                    Log::error("Result Import Row {$rowNumber} - FAILED: " . $e->getMessage());
+                $student = User::where('email', $data['student_email'])->where('role', 'student')->first();
+                if (!$student) {
+                    $importErrors[] = "Row {$rowNumber}: Student with email '{$data['student_email']}' not found.";
+                    continue;
                 }
+                
+                Result::updateOrCreate(
+                    [ 'user_id' => $student->id, 'assessment_id' => $assessment->id ],
+                    [ 'score' => $data['score'], 'comments' => $data['comments'] ?? null ]
+                );
+                $successCount++;
             }
-            fclose($file_handle);
 
-            $message = "Import process finished. Successfully created or updated {$success_count} results.";
-            return redirect()->route('admin.results.index')
-                ->with('success', $message)
-                ->with('import_errors', $import_errors);
+            if (!empty($importErrors)) {
+                DB::rollBack();
+                return redirect()->back()->with('import_errors', $importErrors);
+            }
+
+            DB::commit();
+            return redirect()->route('admin.results.index')->with('success', "Import complete! {$successCount} results were created or updated.");
+
         } catch (\Exception $e) {
-            Log::error('--- RESULT IMPORT PROCESS FAILED: ' . $e->getMessage());
-            return redirect()->back()->with('import_error', 'An unexpected error occurred: '.$e->getMessage())->withInput();
+            DB::rollBack();
+            Log::error('Result Import Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An unexpected error occurred during the import.');
         }
     }
 }

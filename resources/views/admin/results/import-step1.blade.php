@@ -18,16 +18,16 @@
                         Please select the class for which you want to import assessment results.
                     </p>
 
-                    {{-- === THE FIX: Form action points to the 'prepare_step2' route === --}}
+                    {{-- === THIS IS THE FIX: Changed method="GET" to method="POST" === --}}
                     <form method="POST" action="{{ route('admin.results.import.prepare_step2') }}">
                         @csrf
                         
                         <div>
                             <label for="class_section_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Class Section</label>
                             <select id="class_section_id" name="class_section_id" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600">
-                                <option value="">-- Select a class --</option>
+                                <option value="" disabled selected>-- Select a class --</option>
                                 @foreach($classSections as $class)
-                                    <option value="{{ $class->id }}">{{ $class->name }} ({{ $class->academicSession->name }})</option>
+                                    <option value="{{ $class->id }}">{{ $class->name }} ({{ $class->academicSession->name ?? 'No Session' }})</option>
                                 @endforeach
                             </select>
                             <x-input-error :messages="$errors->get('class_section_id')" class="mt-2" />

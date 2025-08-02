@@ -25,8 +25,11 @@
                     </div>
                 </form>
                 {{-- Action Buttons --}}
-                <div class="flex items-center mt-3 sm:mt-0 sm:ml-4">
-                    {{-- You can add an import button here later if desired --}}
+                <div class="flex items-center mt-3 sm:mt-0 sm:ml-4 space-x-2">
+                    {{-- === MODIFIED SECTION: IMPORT BUTTON ADDED === --}}
+                    <a href="{{ route('admin.classes.import.show') }}" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:ring-blue-800">
+                        Import Classes
+                    </a>
                     <a href="{{ route('admin.classes.create') }}" class="focus:outline-none text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5">
                         Add New Class
                     </a>

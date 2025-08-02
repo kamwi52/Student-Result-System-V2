@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\AcademicSession;
 use App\Models\Subject;
-use App\Models\User;
+use App\Models\Term;
 use App\Models\ClassSection;
+use App\Models\User; // <-- Added User model for edit method
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // Added for error logging
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class AssessmentController extends Controller
@@ -20,11 +21,9 @@ class AssessmentController extends Controller
      */
     public function index(): View
     {
-        // Simplified the query as direct relationships should exist
-        $assessments = Assessment::with(['subject', 'classSection', 'academicSession'])
+        $assessments = Assessment::with(['subject', 'classSection', 'academicSession', 'term'])
             ->latest()
             ->paginate(10);
-
         return view('admin.assessments.index', compact('assessments'));
     }
 
@@ -36,7 +35,8 @@ class AssessmentController extends Controller
         $academicSessions = AcademicSession::orderBy('name', 'desc')->get();
         $subjects = Subject::orderBy('name')->get();
         $classSections = ClassSection::orderBy('name')->get();
-        return view('admin.assessments.create', compact('academicSessions', 'subjects', 'classSections'));
+        $terms = Term::orderBy('name')->get();
+        return view('admin.assessments.create', compact('academicSessions', 'subjects', 'classSections', 'terms'));
     }
 
     /**
@@ -50,105 +50,114 @@ class AssessmentController extends Controller
             'weightage' => 'nullable|numeric|min:0|max:100',
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'subject_id' => 'required|exists:subjects,id',
-            'assessment_date' => 'required|date',
             'class_section_id' => 'required|exists:class_sections,id',
+            'term_id' => 'required|exists:terms,id',
+            'assessment_date' => 'required|date',
             'description' => 'nullable|string',
         ]);
 
         Assessment::create($validated);
-
         return redirect()->route('admin.assessments.index')->with('success', 'Assessment created successfully.');
     }
 
-    // ... (edit, update, destroy methods remain the same)
-
     /**
-     * === ADDED: Show the form for importing assessments. ===
+     * Show the form for editing the specified resource.
      */
-    public function showImportForm(): View
+    public function edit(Assessment $assessment): View
     {
-        return view('admin.assessments.import');
+        $academicSessions = AcademicSession::orderBy('name', 'desc')->get();
+        $subjects = Subject::orderBy('name')->get();
+        $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
+        $terms = Term::orderBy('name')->get();
+        $teachers = User::where('role', 'teacher')->orderBy('name')->get(); // Added for consistency
+        return view('admin.assessments.edit', compact('assessment', 'academicSessions', 'subjects', 'classSections', 'terms', 'teachers'));
     }
 
     /**
-     * === ADDED: Handle the import of assessments from a CSV file. ===
+     * Update the specified resource in storage.
      */
-    public function handleImport(Request $request)
+    public function update(Request $request, Assessment $assessment)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt',
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'max_marks' => 'required|numeric|min:0',
+            'weightage' => 'nullable|numeric|min:0|max:100',
+            'academic_session_id' => 'required|exists:academic_sessions,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'class_section_id' => 'required|exists:class_sections,id',
+            'term_id' => 'required|exists:terms,id',
+            'assessment_date' => 'required|date',
+            'description' => 'nullable|string',
         ]);
 
-        $file = $request->file('file');
-        $path = $file->getRealPath();
-        $records = array_map('str_getcsv', file($path));
+        $assessment->update($validated);
+        return redirect()->route('admin.assessments.index')->with('success', 'Assessment updated successfully.');
+    }
+    
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Assessment $assessment)
+    {
+        $assessment->delete();
+        return redirect()->route('admin.assessments.index')->with('success', 'Assessment deleted successfully.');
+    }
+    
+    /**
+     * === THIS IS THE MISSING METHOD ===
+     * Show the form for bulk creating assessments for a class.
+     */
+    public function showBulkCreateForm(): View
+    {
+        $classSections = ClassSection::with('subjects')->orderBy('name')->get();
+        $terms = Term::orderBy('name')->get();
+        return view('admin.assessments.create-bulk', compact('classSections', 'terms'));
+    }
 
-        if (count($records) <= 1) {
-            return redirect()->back()->with('error', 'The uploaded file is empty or contains no data rows.');
-        }
+    /**
+     * === THIS IS THE OTHER MISSING METHOD ===
+     * Handle the submission of the bulk create form.
+     */
+    public function handleBulkCreate(Request $request)
+    {
+        $validated = $request->validate([
+            'class_section_id' => 'required|exists:class_sections,id',
+            'term_id' => 'required|exists:terms,id',
+            'subject_ids' => 'required|array|min:1',
+            'subject_ids.*' => 'exists:subjects,id',
+            'base_name' => 'required|string|max:255',
+            'max_marks' => 'required|integer|min:1',
+            'weightage' => 'required|integer|min:0|max:100',
+            'assessment_date' => 'required|date',
+        ]);
 
-        $header = array_map('trim', array_shift($records));
-        $requiredColumns = ['assessment_name', 'subject_name', 'class_name', 'academic_session_name', 'max_marks', 'weightage', 'assessment_date'];
-
-        if (count(array_diff($requiredColumns, $header)) > 0) {
-            return redirect()->back()->with('error', "Invalid CSV header. Please ensure the columns are: " . implode(', ', $requiredColumns));
-        }
-
-        $importErrors = [];
-        $successCount = 0;
+        $classSection = ClassSection::findOrFail($validated['class_section_id']);
+        $subjects = Subject::whereIn('id', $validated['subject_ids'])->get();
+        $createdCount = 0;
 
         DB::beginTransaction();
         try {
-            foreach ($records as $key => $row) {
-                $rowNumber = $key + 2;
-                if (empty(implode('', $row))) continue;
-                
-                $data = array_combine($header, $row);
-
-                // Find related models by name
-                $subject = Subject::where('name', $data['subject_name'])->first();
-                $academicSession = AcademicSession::where('name', $data['academic_session_name'])->first();
-                $classSection = $academicSession ? ClassSection::where('name', $data['class_name'])->where('academic_session_id', $academicSession->id)->first() : null;
-
-                // Validate that related models were found
-                if (!$subject) {
-                    $importErrors[] = "Row {$rowNumber}: Subject '{$data['subject_name']}' not found.";
-                    continue;
-                }
-                if (!$academicSession) {
-                    $importErrors[] = "Row {$rowNumber}: Academic Session '{$data['academic_session_name']}' not found.";
-                    continue;
-                }
-                if (!$classSection) {
-                    $importErrors[] = "Row {$rowNumber}: Class '{$data['class_name']}' not found in the '{$data['academic_session_name']}' session.";
-                    continue;
-                }
-
-                // Create the assessment
+            foreach ($subjects as $subject) {
                 Assessment::create([
-                    'name' => $data['assessment_name'],
-                    'subject_id' => $subject->id,
+                    'name' => $validated['base_name'] . ' (' . $subject->name . ')',
                     'class_section_id' => $classSection->id,
-                    'academic_session_id' => $academicSession->id,
-                    'max_marks' => $data['max_marks'],
-                    'weightage' => $data['weightage'],
-                    'assessment_date' => $data['assessment_date'],
+                    'academic_session_id' => $classSection->academic_session_id,
+                    'subject_id' => $subject->id,
+                    'term_id' => $validated['term_id'],
+                    'max_marks' => $validated['max_marks'],
+                    'weightage' => $validated['weightage'],
+                    'assessment_date' => $validated['assessment_date'],
                 ]);
-                $successCount++;
+                $createdCount++;
             }
-
-            if (!empty($importErrors)) {
-                DB::rollBack();
-                return redirect()->back()->with('import_errors', $importErrors);
-            }
-
             DB::commit();
-            return redirect()->route('admin.assessments.index')->with('success', "Import complete! Successfully created {$successCount} assessments.");
-
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Assessment Import Failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'An unexpected error occurred during import. Please check your file.');
+            Log::error('Bulk Assessment Creation Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred and no assessments were created. Please check the logs.');
         }
+
+        return redirect()->route('admin.assessments.index')
+            ->with('success', "$createdCount assessments were created successfully!");
     }
 }

@@ -9,45 +9,46 @@ use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
 {
-    /**
-     * Show the form to enroll students in a specific class.
-     *
-     * @param  \App\Models\ClassSection  $classSection
-     * @return \Illuminate\View\View
-     */
-    public function index(ClassSection $classSection)
+    // ... your existing index() and store() methods ...
+
+    public function showBulkManageForm(Request $request)
     {
-        // Get all users with the 'student' role
-        $allStudents = User::where('role', 'student')->orderBy('name')->get();
+        $classSections = ClassSection::with('academicSession')->orderBy('name')->get();
+        
+        $selectedClass = null;
+        $enrolledStudents = collect();
+        $unenrolledStudents = collect();
 
-        // Get the IDs of students already enrolled in this class
-        $enrolledStudentIds = $classSection->students()->pluck('users.id')->toArray();
+        if ($request->filled('class_section_id')) {
+            $validated = $request->validate(['class_section_id' => 'required|exists:class_sections,id']);
+            $selectedClass = ClassSection::findOrFail($validated['class_section_id']);
+            
+            $enrolledStudentIds = $selectedClass->students()->pluck('users.id')->toArray();
+            
+            $unenrolledStudents = User::where('role', 'student')
+                                        ->whereNotIn('id', $enrolledStudentIds)
+                                        ->orderBy('name')
+                                        ->get(['id', 'name']);
+            
+            // NOTE: We now fetch the full student object for the enrolled list
+            $enrolledStudents = $selectedClass->students()->orderBy('name')->get();
+        }
 
-        return view('admin.enrollments.index', [
-            'classSection' => $classSection,
-            'allStudents' => $allStudents,
-            'enrolledStudentIds' => $enrolledStudentIds,
-        ]);
+        return view('admin.enrollments.manage-bulk', compact('classSections', 'selectedClass', 'enrolledStudents', 'unenrolledStudents'));
     }
 
-    /**
-     * Store the updated enrollment list for the class.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ClassSection  $classSection
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function store(Request $request, ClassSection $classSection)
+    public function handleBulkManage(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
+            'class_section_id' => 'required|exists:class_sections,id',
             'student_ids' => 'nullable|array',
             'student_ids.*' => 'exists:users,id',
         ]);
 
-        // The sync() method is perfect for this. It adds new students,
-        // removes any that were unchecked, and leaves existing ones untouched.
-        $classSection->students()->sync($request->input('student_ids', []));
+        $classSection = ClassSection::findOrFail($validated['class_section_id']);
+        $classSection->students()->sync($validated['student_ids'] ?? []);
 
-        return redirect()->route('admin.classes.index')->with('success', "Enrollment for '{$classSection->name}' updated successfully.");
+        return redirect()->route('admin.classes.index')
+            ->with('success', 'Enrollments for ' . $classSection->name . ' have been updated successfully!');
     }
 }

@@ -15,25 +15,34 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            @include('layouts.navigation')
+        <div class="bg-gray-100 dark:bg-gray-900">
 
-            <!-- Page Heading -->
-            @if (isset($header))
-                <header class="bg-white dark:bg-gray-800 shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endif
+            {{-- This includes your sidebar and top navigation bar --}}
+            @include('layouts.partials.sidebar') {{-- Assuming your sidebar is in a partial --}}
 
-            <!-- Page Content -->
-            <main>
-                {{ $slot }}
-            </main>
+            {{-- Main Content Area --}}
+            <div class="p-4 sm:ml-64 pt-20">
+
+                <!-- Page Heading -->
+                @if (isset($header))
+                    <header class="bg-white dark:bg-gray-800 shadow mb-6 sm:rounded-lg">
+                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                            {{ $header }}
+                        </div>
+                    </header>
+                @endif
+
+                <!-- Page Content -->
+                <main>
+                    {{ $slot }}
+                </main>
+
+            </div>
         </div>
         
-        {{-- This directive will render the script pushed from the index.blade.php file --}}
+        {{-- === THIS IS THE FIX === --}}
+        {{-- This line is crucial. It tells Laravel where to render any --}}
+        {{-- JavaScript that is "pushed" from a child page. --}}
         @stack('scripts')
     </body>
 </html>

@@ -1,25 +1,16 @@
 <x-app-layout>
-    {{-- Page Header with Back Button --}}
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                {{ __('Create New Assessment') }}
-            </h2>
-            <a href="{{ route('admin.assessments.index') }}" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-                ← Back to Assessments
-            </a>
-        </div>
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('Create New Assessment') }}
+        </h2>
     </x-slot>
 
-    {{-- Main Content --}}
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-md sm:rounded-lg">
                 <div class="p-6">
                     <form method="POST" action="{{ route('admin.assessments.store') }}">
                         @csrf
-
-                        {{-- Top row: Name and Subject --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div>
                                 <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Assessment Name</label>
@@ -38,7 +29,6 @@
                             </div>
                         </div>
                         
-                        {{-- Second row: Session and Class --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div>
                                 <label for="academic_session_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Academic Session</label>
@@ -62,7 +52,18 @@
                             </div>
                         </div>
 
-                        {{-- Third row: Marks, Weightage, Date --}}
+                        {{-- === FIX: ADDED TERM SELECTION DROPDOWN === --}}
+                        <div class="mb-6">
+                            <label for="term_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Term</label>
+                            <select id="term_id" name="term_id" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Select Term</option>
+                                @foreach ($terms as $term)
+                                    <option value="{{ $term->id }}" @selected(old('term_id') == $term->id)>{{ $term->name }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('term_id')" class="mt-2" />
+                        </div>
+                        
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                             <div>
                                 <label for="max_marks" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Max Marks</label>
@@ -80,15 +81,13 @@
                                 <x-input-error :messages="$errors->get('assessment_date')" class="mt-2" />
                             </div>
                         </div>
-
-                        {{-- Description --}}
+                        
                         <div class="mb-6">
                             <label for="description" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Description (Optional)</label>
                             <textarea id="description" name="description" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600">{{ old('description') }}</textarea>
                             <x-input-error :messages="$errors->get('description')" class="mt-2" />
                         </div>
-
-                        {{-- Action Buttons --}}
+                        
                         <div class="flex items-center justify-end mt-4">
                             <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700">
                                 Create Assessment

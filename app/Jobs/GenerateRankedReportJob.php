@@ -24,33 +24,31 @@ class GenerateRankedReportJob implements ShouldQueue
 
     protected array $studentUserIds;
     protected int $classSectionId;
-    protected int $termId; // Renamed from assessmentTypeId
+    protected int $termId;
     protected User $requestingUser;
 
     public function __construct(array $studentUserIds, int $classSectionId, int $termId, User $requestingUser)
     {
         $this->studentUserIds = $studentUserIds;
         $this->classSectionId = $classSectionId;
-        $this->termId = $termId; // Renamed
+        $this->termId = $termId;
         $this->requestingUser = $requestingUser;
     }
 
     public function handle(): void
     {
-        $classSection = ClassSection::with(['students.user', 'academicSession'])->findOrFail($this->classSectionId);
-        $studentsToProcess = $classSection->students->whereIn('user_id', $this->studentUserIds);
+        $classSection = ClassSection::with(['students', 'academicSession'])->findOrFail($this->classSectionId);
+        $studentsInClass = $classSection->students->whereIn('id', $this->studentUserIds);
         $reportData = [];
 
-        foreach ($studentsToProcess as $student) {
-            $results = Result::where('student_id', $student->id)
-                ->whereHas('assessment', function ($query) use ($classSection) {
-                    // This now looks for the term_id on the assignment related to the assessment
-                    $query->where('academic_session_id', $classSection->academic_session_id)
-                          ->whereHas('assignment', function ($subQuery) {
-                              $subQuery->where('term_id', $this->termId);
-                          });
+        foreach ($studentsInClass as $student) {
+            // === LOGIC FIX: THIS QUERY IS NOW CORRECT ===
+            // It now directly checks the `term_id` on the `assessments` table.
+            $results = Result::where('user_id', $student->id)
+                ->whereHas('assessment', function ($query) {
+                    $query->where('term_id', $this->termId);
                 })
-                ->with('assessment.subject')
+                ->with(['assessment.subject']) // Eager load for performance
                 ->get();
 
             $totalScore = $results->sum('score');
@@ -61,16 +59,17 @@ class GenerateRankedReportJob implements ShouldQueue
                 'results' => $results,
                 'total' => $totalScore,
                 'average' => $average,
-                'rank' => 0,
+                'rank' => 0, // Placeholder for ranking
             ];
         }
 
+        // Rank the students based on total score
         usort($reportData, fn($a, $b) => $b['total'] <=> $a['total']);
         
         $rank = 0;
         $last_score = -1;
         $students_at_rank = 0;
-        foreach ($reportData as &$data) {
+        foreach ($reportData as $index => &$data) {
             $students_at_rank++;
             if ($data['total'] < $last_score) {
                 $rank += $students_at_rank - 1;

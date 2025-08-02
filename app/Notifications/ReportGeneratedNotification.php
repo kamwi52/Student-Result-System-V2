@@ -56,11 +56,10 @@ class ReportGeneratedNotification extends Notification implements ShouldQueue
                 ->line('Please try again or contact an administrator if the problem persists.');
         }
 
-        // Generate a temporary, signed URL for secure downloading.
-        // This is much more secure than passing the raw filename.
+        // === FIX: Updated the route name to the new, non-conflicting one ===
         $downloadUrl = URL::temporarySignedRoute(
-            'admin.reports.download', // The name of our new download route
-            now()->addHours(24),      // The link will be valid for 24 hours
+            'admin.reports.download.generated', // <-- CORRECTED
+            now()->addHours(24),
             ['filename' => $this->filename]
         );
 
@@ -85,12 +84,13 @@ class ReportGeneratedNotification extends Notification implements ShouldQueue
                 'status' => 'error',
                 'title' => 'Report Failed',
                 'message' => 'Failed to generate your report. Reason: ' . ($this->errorMessage ?? 'Unknown error'),
-                'action_url' => null,
+                'action_url' => null, // No action to take on failure
             ];
         }
         
+        // === FIX: Updated the route name to the new, non-conflicting one ===
         $downloadUrl = URL::temporarySignedRoute(
-            'admin.reports.download',
+            'admin.reports.download.generated', // <-- CORRECTED
             now()->addHours(24),
             ['filename' => $this->filename]
         );
@@ -98,8 +98,8 @@ class ReportGeneratedNotification extends Notification implements ShouldQueue
         return [
             'status' => 'success',
             'title' => 'Report Ready',
-            'message' => 'Your bulk student report is ready to be downloaded.',
-            'action_url' => $downloadUrl,
+            'message' => 'Your student report is ready for download.',
+            'action_url' => $downloadUrl, // This URL is used by the notification bell link
         ];
     }
 }

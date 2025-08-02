@@ -5,65 +5,74 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Assessment extends Model
 {
     use HasFactory;
 
+    /**
+     * === FIX #1: Added 'term_id' to the fillable array ===
+     * This is required to allow mass-assignment of the term.
+     */
     protected $fillable = [
         'name',
         'subject_id',
         'academic_session_id',
+        'class_section_id',
+        'term_id', // <-- ADDED
         'max_marks',
         'weightage',
         'assessment_date',
-        'class_section_id',
     ];
 
+    /**
+     * The attributes that should be cast.
+     */
     protected $casts = [
         'assessment_date' => 'datetime',
     ];
 
+    /**
+     * Get the subject that this assessment belongs to.
+     */
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);
     }
 
+    /**
+     * Get the academic session that this assessment belongs to.
+     */
     public function academicSession(): BelongsTo
     {
         return $this->belongsTo(AcademicSession::class);
     }
 
+    /**
+     * Get the class section that this assessment is for.
+     */
     public function classSection(): BelongsTo
     {
         return $this->belongsTo(ClassSection::class);
     }
 
-    public function assignment(): HasOne
-    {
-        return $this->hasOne(Assignment::class);
-    }
-
+    /**
+     * Get all of the results for the Assessment.
+     */
     public function results(): HasMany
     {
         return $this->hasMany(Result::class);
     }
 
     /**
-     * Get the term for the assessment through the assignment.
+     * === FIX #2: Replaced the incorrect relationship with a direct one ===
+     * An Assessment now belongs directly to a Term.
      */
-    public function term(): HasOneThrough
+    public function term(): BelongsTo
     {
-        return $this->hasOneThrough(
-            Term::class,           // The final model we want to access
-            Assignment::class,     // The intermediate model
-            'assessment_id',       // Foreign key on the assignments table (links to Assessment)
-            'id',                  // Foreign key on the terms table (links to Term)
-            'id',                  // Local key on the assessments table
-            'term_id'              // Local key on the assignments table (links to Term)
-        );
+        return $this->belongsTo(Term::class);
     }
+
+    // NOTE: The 'assignment()' and 'hasOneThrough term()' methods have been removed as they are part of the old, incorrect architecture.
 }

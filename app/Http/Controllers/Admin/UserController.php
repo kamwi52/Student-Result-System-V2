@@ -10,15 +10,31 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
 
 class UserController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * === THIS IS THE UPDATED METHOD ===
+     * Display a listing of the resource, with search functionality.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $users = User::latest()->paginate(10);
+        $query = User::query();
+
+        // If a 'search' parameter exists in the request URL, filter the query.
+        if ($request->filled('search')) {
+            $searchTerm = $request->input('search');
+            // This will search for the term in both the 'name' and 'email' columns.
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('email', 'LIKE', "%{$searchTerm}%");
+            });
+        }
+
+        // Paginate the results (either all users or the filtered search results).
+        $users = $query->latest()->paginate(10);
+
         return view('admin.users.index', compact('users'));
     }
 
@@ -47,7 +63,7 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
-            'email_verified_at' => now(), // Verifies user created via the form
+            'email_verified_at' => now(),
         ]);
 
         return to_route('admin.users.index')->with('success', 'User created successfully.');
@@ -58,12 +74,7 @@ class UserController extends Controller
      */
     public function edit(User $user): View
     {
-        $roles = [
-            'admin' => 'Admin',
-            'teacher' => 'Teacher',
-            'student' => 'Student',
-        ];
-
+        $roles = ['admin' => 'Admin', 'teacher' => 'Teacher', 'student' => 'Student'];
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
@@ -114,7 +125,7 @@ class UserController extends Controller
     /**
      * Handle the import of users from a spreadsheet.
      */
-        public function handleImport(Request $request)
+    public function handleImport(Request $request)
     {
         $request->validate([
             'file' => 'required|mimes:xlsx,csv,xls',
@@ -122,26 +133,16 @@ class UserController extends Controller
 
         try {
             Excel::import(new UsersImport, $request->file('file'));
-
-        // This is the specific catch block for validation errors from the spreadsheet
         } catch (ValidationException $e) {
-            $failures = $e->failures();
             $errors = [];
-
-            foreach ($failures as $failure) {
-                // Collect user-friendly error messages
+            foreach ($e->failures() as $failure) {
                 $errors[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
             }
-            
-            // Redirect back with the specific row errors
             return back()->with('import_errors', $errors);
-
-        // This is a general catch block for other problems (e.g., bad file format)
         } catch (\Exception $e) {
-            return back()->with('import_error', 'An error occurred during the import process. Please check your file. Details: ' . $e->getMessage());
+            return back()->with('error', 'An error occurred during the import process. Details: ' . $e->getMessage());
         }
 
         return to_route('admin.users.index')->with('success', 'Users have been successfully imported and/or updated.');
     }
-
 }

@@ -13,7 +13,7 @@
                         <h3 class="text-lg font-medium">
                             {{ $term->name }} Reports for: {{ $classSection->name }}
                         </h3>
-                        <a href="{{ route('admin.final-reports.index') }}" class="text-sm text-blue-600 hover:underline">
+                        <a href="{{ route('admin.final-reports.index') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                             ← Back to Selection
                         </a>
                     </div>
@@ -21,31 +21,37 @@
                     @if($students->isEmpty())
                         <p class="text-center text-gray-500 py-8">There are no students enrolled in this class.</p>
                     @else
+                        {{-- Bulk Generation Form --}}
                         <form action="{{ route('admin.final-reports.generate') }}" method="POST">
                             @csrf
                             <input type="hidden" name="class_id" value="{{ $classSection->id }}">
                             <input type="hidden" name="term_id" value="{{ $term->id }}">
 
-                            <div class="border-t border-b py-2">
+                            <div class="border-t border-b border-gray-200 dark:border-gray-700 py-2">
                                 <div class="flex items-center px-4">
-                                    <input type="checkbox" id="select-all">
-                                    <label for="select-all" class="ml-3 block text-sm font-medium">Select All</label>
+                                    <input type="checkbox" id="select-all" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                    <label for="select-all" class="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">Select All</label>
                                 </div>
                             </div>
                             
-                            <ul class="divide-y">
+                            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                                 @foreach($students as $student)
-                                    <li class="px-4 py-3">
+                                    {{-- === THIS IS THE UPDATED SECTION === --}}
+                                    <li class="px-4 py-3 flex items-center justify-between">
                                         <div class="flex items-center">
-                                            <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="student-checkbox">
-                                            <label class="ml-3 block text-sm">{{ $student->name }}</label>
+                                            <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="student-checkbox h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                            <label class="ml-3 block text-sm text-gray-800 dark:text-gray-200">{{ $student->name }}</label>
                                         </div>
+                                        {{-- New "Generate" link for a single student --}}
+                                        <a href="{{ route('admin.final-reports.generate-single', ['student_id' => $student->id, 'class_id' => $classSection->id, 'term_id' => $term->id]) }}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                                            Generate
+                                        </a>
                                     </li>
                                 @endforeach
                             </ul>
                             
                             <div class="mt-6 flex justify-end">
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 border rounded-md font-semibold text-xs text-white uppercase">
+                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                     Generate Selected Reports
                                 </button>
                             </div>

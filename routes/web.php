@@ -1,7 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Notifications\DatabaseNotification;
 
 // Import all controllers
 use App\Http\Controllers\HomeController;
@@ -67,18 +70,26 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::post('subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
     Route::resource('subjects', SubjectController::class);
     
+    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
+    Route::get('classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
+    Route::post('classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
+    Route::get('classes/enroll/import', [EnrollmentController::class, 'showBulkEnrollForm'])->name('classes.enroll.import.show');
+    Route::post('classes/enroll/import', [EnrollmentController::class, 'handleBulkEnroll'])->name('classes.enroll.import.handle');
+    Route::get('classes/post-test', [ClassSectionController::class, 'showPostTest'])->name('classes.showPostTest');
+    Route::post('classes/post-test', [ClassSectionController::class, 'handlePostTest'])->name('classes.handlePostTest');
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
+
+    Route::match(['get', 'post'], '/enrollments/bulk-manage', [EnrollmentController::class, 'showBulkManageForm'])->name('enrollments.bulk-manage.show');
+    Route::post('/enrollments/bulk-save', [EnrollmentController::class, 'handleBulkManage'])->name('enrollments.bulk-manage.handle');
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
     
+    Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
+    Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
     Route::get('assessments/import', [AssessmentController::class, 'showImportForm'])->name('assessments.import.show');
     Route::post('assessments/import', [AssessmentController::class, 'handleImport'])->name('assessments.import.handle');
     Route::resource('assessments', AssessmentController::class);
 
-    // ========================================================================
-    // --- FIX: Corrected the results import workflow to include the prepare_step2 route ---
-    // The previous error happened because this route was missing for the form submission.
-    // ========================================================================
     Route::prefix('results/import')->name('results.import.')->group(function() {
         Route::get('/step-1', [AdminResultController::class, 'showImportStep1'])->name('show_step1');
         Route::post('/prepare-step-2', [AdminResultController::class, 'prepareImportStep2'])->name('prepare_step2');
@@ -91,19 +102,38 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::resource('academic-sessions', AcademicSessionController::class);
     Route::resource('terms', TermController::class);
     
-    // --- SINGLE ASSESSMENT REPORTING WORKFLOW (Teacher-style) ---
+    // Reporting Routes
     Route::get('/reports/{classSection}/assessments', [ReportingController::class, 'showAssessments'])->name('reports.show-assessments');
     Route::get('/reports/assessments/{assessment}/results', [ReportingController::class, 'showResults'])->name('reports.show-results');
     Route::post('/reports/generate-bulk', [ReportingController::class, 'generateBulkReport'])->name('reports.generate-bulk');
     Route::get('/reports/download', [ReportingController::class, 'downloadReport'])->middleware('signed')->name('reports.download');
 
-
-    // --- COMPREHENSIVE RANKED REPORT CARD WORKFLOW ---
     Route::prefix('final-reports')->name('final-reports.')->group(function() {
         Route::get('/', [FinalReportController::class, 'index'])->name('index');
         Route::get('/show-students', [FinalReportController::class, 'showStudents'])->name('show-students');
         Route::post('/generate', [FinalReportController::class, 'generate'])->name('generate');
+        Route::get('/generate-single/{student_id}/{class_id}/{term_id}', [FinalReportController::class, 'generateSingle'])->name('generate-single');
     });
+
+    // Notification and Download Routes
+    Route::get('/notifications/{notification}', function (DatabaseNotification $notification) {
+        $notification->markAsRead();
+        if (isset($notification->data['action_url']) && $notification->data['action_url']) {
+            return redirect($notification->data['action_url']);
+        }
+        return redirect()->back();
+    })->name('notifications.show');
+
+    Route::get('/reports/download-generated-file', function(Request $request) {
+        if (!$request->hasValidSignature()) {
+            abort(401);
+        }
+        $filePath = $request->query('filename');
+        if (Storage::disk('private')->exists($filePath)) {
+            return Storage::disk('private')->download($filePath);
+        }
+        abort(404, 'File not found or link has expired.');
+    })->name('reports.download.generated');
 
 });
 

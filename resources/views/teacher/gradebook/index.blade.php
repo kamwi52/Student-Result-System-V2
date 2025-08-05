@@ -1,57 +1,52 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('My Teaching Assignments (Gradebook)') }}
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('My Gradebook') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-gray-200">
-
-                    @if ($classesTaught->isEmpty())
-                        <div class="p-4 text-sm text-gray-700 bg-gray-100 rounded-lg" role="alert">
-                            You are not currently assigned to teach any subjects in any classes.
-                            Please contact an administrator to get your teaching assignments.
-                        </div>
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900 dark:text-gray-100">
+                    <x-success-message/>
+                    
+                    {{-- === FIX: Changed variable from $assignments to $assessments to match the new controller logic === --}}
+                    @if($assessments->isEmpty())
+                        <p class="text-center text-gray-500">You have no assessments assigned to you. An administrator needs to create assessments for the classes and subjects you teach.</p>
                     @else
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class Name</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Session</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Taught</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach ($classesTaught as $class)
-                                        {{-- The controller should have already filtered subjects to those taught by the current teacher --}}
-                                        @foreach ($class->subjects as $subject)
-                                            <tr>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $class->name }}</td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $class->academicSession->name ?? 'N/A' }}</td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $subject->name }}</td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    {{-- Link to view assignments for this specific Class & Subject combo --}}
-                                                    <a href="{{ route('teacher.gradebook.assessments', ['classSection' => $class->id, 'subject' => $subject->id]) }}" 
-                                                       class="text-indigo-600 hover:text-indigo-900">
-                                                        View Assignments
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    @foreach ($assessments as $assessment)
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ $assessment->name }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $assessment->classSection->name ?? 'N/A' }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $assessment->subject->name ?? 'N/A' }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $assessment->assessment_date->format('Y-m-d') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <a href="{{ route('teacher.gradebook.results', $assessment) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400">
+                                                    Enter/View Results
+                                                </a>
+                                            </td>
+                                        </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
                         <div class="mt-4">
-                            {{ $classesTaught->links() }}
+                            {{ $assessments->links() }}
                         </div>
                     @endif
-
                 </div>
             </div>
         </div>

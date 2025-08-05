@@ -17,11 +17,16 @@
     <body class="font-sans antialiased">
         <div class="bg-gray-100 dark:bg-gray-900">
 
-            {{-- This includes your sidebar and top navigation bar --}}
-            @include('layouts.partials.sidebar') {{-- Assuming your sidebar is in a partial --}}
+            {{-- === THIS IS THE FIX: The sidebar is now part of this main layout file === --}}
+            <!-- Main Sidebar -->
+            <aside id="logo-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-white border-r border-gray-200 sm:translate-x-0 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidebar">
+                @include('layouts.partials.sidebar') {{-- Keep sidebar content in a partial for cleanliness --}}
+            </aside>
 
             {{-- Main Content Area --}}
-            <div class="p-4 sm:ml-64 pt-20">
+            <div class="p-4 sm:ml-64">
+                {{-- This includes the top bar --}}
+                @include('layouts.partials.topbar')
 
                 <!-- Page Heading -->
                 @if (isset($header))
@@ -36,13 +41,10 @@
                 <main>
                     {{ $slot }}
                 </main>
-
             </div>
+
         </div>
         
-        {{-- === THIS IS THE FIX === --}}
-        {{-- This line is crucial. It tells Laravel where to render any --}}
-        {{-- JavaScript that is "pushed" from a child page. --}}
         @stack('scripts')
     </body>
 </html>

@@ -1,6 +1,6 @@
 <!-- Main Sidebar -->
 <aside id="logo-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-white border-r border-gray-200 sm:translate-x-0 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidebar">
-   <div class="h-full px-3 pb-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
+   <div class="h-full px-3 pb-4 overflow-y-auto bg-white dark:bg-gray-800">
       <ul class="space-y-2 font-medium">
          <!-- Dashboard Link -->
          <li>
@@ -11,46 +11,52 @@
          </li>
 
          @if(auth()->user()->role === 'admin')
-            <!-- Settings Section -->
+            
+            {{-- === FIX: Sections have been reordered for a logical workflow === --}}
+
+            <!-- Settings Section (Setup items first) -->
             <li>
                 <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700" aria-controls="dropdown-settings" data-collapse-toggle="dropdown-settings">
-                    <svg class="flex-shrink-0 w-5 h-5 text-amber-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M11.6 3.05a1 1 0 0 1 1.2.36l.07.13 1.83 3.17a1 1 0 0 0 .86.49h3.63a1 1 0 0 1 .99 1.14l-.35 3.63a1 1 0 0 1-.86.86l-3.17 1.83a1 1 0 0 0-.5.86l-.36 3.63a1 1 0 0 1-1.14.99l-3.63-.35a1 1 0 0 1-.86-.86l-1.83-3.17a1 1 0 0 0-.86-.5l-3.63-.36a1 1 0 0 1-.99-1.14l.35-3.63a1 1 0 0 1 .86-.86l3.17-1.83a1 1 0 0 0 .5-.86l.36-3.63a1 1 0 0 1 .99-1.14h3.63ZM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clip-rule="evenodd"/></svg>
-                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap text-amber-500 font-bold">Settings</span>
+                    <svg class="flex-shrink-0 w-5 h-5 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M11.6 3.05a1 1 0 0 1 1.2.36l.07.13 1.83 3.17a1 1 0 0 0 .86.49h3.63a1 1 0 0 1 .99 1.14l-.35 3.63a1 1 0 0 1-.86.86l-3.17 1.83a1 1 0 0 0-.5.86l-.36 3.63a1 1 0 0 1-1.14.99l-3.63-.35a1 1 0 0 1-.86-.86l-1.83-3.17a1 1 0 0 0-.86-.5l-3.63-.36a1 1 0 0 1-.99-1.14l.35-3.63a1 1 0 0 1 .86-.86l3.17-1.83a1 1 0 0 0 .5-.86l.36-3.63a1 1 0 0 1 .99-1.14h3.63ZM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clip-rule="evenodd"/></svg>
+                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Settings</span>
                     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/></svg>
                 </button>
                 <ul id="dropdown-settings" class="hidden py-2 space-y-2">
-                    <li><a href="{{ route('admin.academic-sessions.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Academic Sessions</a></li>
-                    <li><a href="{{ route('admin.terms.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Manage Terms</a></li>
-                    <li><a href="{{ route('admin.grading-scales.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Grading Scales</a></li>
+                    <li><a href="{{ route('admin.academic-sessions.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Academic Sessions</a></li>
+                    <li><a href="{{ route('admin.terms.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Manage Terms</a></li>
+                    <li><a href="{{ route('admin.grading-scales.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Grading Scales</a></li>
                 </ul>
             </li>
 
-            <!-- Management Section -->
+            <!-- Management Section (Day-to-day operations) -->
             <li>
                 <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700" aria-controls="dropdown-management" data-collapse-toggle="dropdown-management">
-                    <svg class="flex-shrink-0 w-5 h-5 text-indigo-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6Zm1.5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" clip-rule="evenodd"/></svg>
-                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap text-indigo-500 font-bold">Management</span>
+                    <svg class="flex-shrink-0 w-5 h-5 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6Zm1.5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" clip-rule="evenodd"/></svg>
+                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Management</span>
                     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/></svg>
                 </button>
                 <ul id="dropdown-management" class="hidden py-2 space-y-2">
-                    <li><a href="{{ route('admin.users.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">User Management</a></li>
-                    <li><a href="{{ route('admin.classes.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Class Management</a></li>
-                    <li><a href="{{ route('admin.subjects.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Subject Management</a></li>
-                    <li><a href="{{ route('admin.enrollments.bulk-manage.show') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Bulk Student Enrollment</a></li>
-                    <li><a href="{{ route('admin.assessments.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Assessment Management</a></li>
-                    <li><a href="{{ route('admin.results.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Result Management</a></li>
+                    <li><a href="{{ route('admin.users.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">User Management</a></li>
+                    <li><a href="{{ route('admin.classes.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Class Management</a></li>
+                    <li><a href="{{ route('admin.subjects.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Subject Management</a></li>
+                    
+                    {{-- === FIX: Added the link for Bulk Enrollment === --}}
+                    <li><a href="{{ route('admin.enrollments.bulk-manage.show') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Bulk Student Enrollment</a></li>
+                    
+                    <li><a href="{{ route('admin.assessments.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Assessment Management</a></li>
+                    <li><a href="{{ route('admin.results.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Result Management</a></li>
                 </ul>
             </li>
             
             <!-- Reporting Section -->
             <li>
                 <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700" aria-controls="dropdown-reporting" data-collapse-toggle="dropdown-reporting">
-                    <svg class="flex-shrink-0 w-5 h-5 text-teal-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M10 2a1 1 0 0 1 1 1v1h2V3a1 1 0 1 1 2 0v1h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V3a1 1 0 0 1 1-1h2Zm4 8a1 1 0 1 0-2 0v2H9a1 1 0 1 0 0 2h3v1a1 1 0 1 0 2 0v-1h1a1 1 0 1 0 0-2h-1v-2Z" clip-rule="evenodd"/></svg>
-                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap text-teal-500 font-bold">Reporting</span>
+                    <svg class="flex-shrink-0 w-5 h-5 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M10 2a1 1 0 0 1 1 1v1h2V3a1 1 0 1 1 2 0v1h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V3a1 1 0 0 1 1-1h2Zm4 8a1 1 0 1 0-2 0v2H9a1 1 0 1 0 0 2h3v1a1 1 0 1 0 2 0v-1h1a1 1 0 1 0 0-2h-1v-2Z" clip-rule="evenodd"/></svg>
+                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Reporting</span>
                     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/></svg>
                 </button>
                 <ul id="dropdown-reporting" class="hidden py-2 space-y-2">
-                    <li><a href="{{ route('admin.final-reports.index') }}" class="flex items-center w-full p-2 text-gray-900 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Ranked Report Cards</a></li>
+                    <li><a href="{{ route('admin.final-reports.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">Ranked Report Cards</a></li>
                 </ul>
             </li>
 
@@ -59,8 +65,7 @@
    </div>
 </aside>
 
-<!-- Top Bar -->
-{{-- === FIX: Changed top bar to standard light theme === --}}
+<!-- Top Bar (This part is unchanged) -->
 <div class="fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
     <div class="px-3 py-3 lg:px-5 lg:pl-3">
         <div class="flex items-center justify-between">
@@ -77,20 +82,11 @@
             <div class="flex items-center">
                 <div class="flex items-center ms-3">
                     <div>
-                        <button type="button" class="flex text-sm bg-white dark:bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600" aria-expanded="false" data-dropdown-toggle="dropdown-user">
+                        <button type="button" class="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600" aria-expanded="false" data-dropdown-toggle="dropdown-user">
                             <span class="sr-only">Open user menu</span>
-                            
-                            {{-- === FIX: Dynamic Profile Picture / Initials Fallback === --}}
-                            @if (Auth::user()->profile_photo_path)
-                                <img class="w-8 h-8 rounded-full" src="{{ Auth::user()->profile_photo_url }}" alt="{{ Auth::user()->name }}">
-                            @else
-                                <div class="relative w-8 h-8 overflow-hidden bg-gray-100 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                                    <span class="font-medium text-gray-600 dark:text-gray-300">
-                                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                                    </span>
-                                </div>
-                            @endif
-
+                            <div class="relative w-8 h-8 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
+                                <svg class="absolute w-10 h-10 text-gray-400 -left-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                            </div>
                         </button>
                     </div>
                     <div class="z-50 hidden my-4 text-base list-none bg-white divide-y divide-gray-100 rounded shadow dark:bg-gray-700 dark:divide-gray-600" id="dropdown-user">

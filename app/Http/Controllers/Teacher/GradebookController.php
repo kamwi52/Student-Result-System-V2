@@ -5,29 +5,63 @@ namespace App\Http\Controllers\Teacher;
 use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\Result;
+use App\Models\ClassSection;
+use App\Models\Subject;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class GradebookController extends Controller
 {
     /**
-     * Display a single list of all Assessments assigned to the logged-in teacher.
+     * This is the definitive fix for the 404 error.
+     * The `select('assessments.*')` line prevents the ID conflict from the join.
      */
     public function index(): View
     {
         $teacherId = Auth::id();
 
-        $assessments = Assessment::whereHas('classSection.subjects', function ($query) use ($teacherId) {
-            $query->where('class_section_subject.teacher_id', $teacherId);
-        })
-        ->with(['classSection', 'subject', 'term'])
-        ->latest('assessment_date')
-        ->paginate(15);
+        $assessments = Assessment::query()
+            ->join('class_section_subject', function ($join) use ($teacherId) {
+                $join->on('class_section_subject.class_section_id', '=', 'assessments.class_section_id')
+                     ->on('class_section_subject.subject_id', '=', 'assessments.subject_id')
+                     ->where('class_section_subject.teacher_id', '=', $teacherId);
+            })
+            ->with(['classSection', 'subject', 'term'])
+            // THIS LINE IS THE FIX. IT PREVENTS THE ID CONFLICT.
+            ->select('assessments.*') 
+            ->latest('assessments.created_at')
+            ->paginate(15);
         
         return view('teacher.gradebook.index', compact('assessments'));
+    }
+
+    /**
+     * Displays a list of assessments for a specific subject within a specific class.
+     */
+    public function showAssessments(ClassSection $classSection, Subject $subject): View
+    {
+        $teacherId = Auth::id();
+        $isAssigned = DB::table('class_section_subject')
+            ->where('class_section_id', $classSection->id)
+            ->where('subject_id', $subject->id)
+            ->where('teacher_id', $teacherId)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(403, 'You are not authorized to access this gradebook.');
+        }
+
+        $assessments = Assessment::where('class_section_id', $classSection->id)
+                                 ->where('subject_id', $subject->id)
+                                 ->withCount('results')
+                                 ->latest('created_at')
+                                 ->paginate(15);
+
+        return view('teacher.gradebook.index', compact('assessments', 'classSection', 'subject'));
     }
 
     /**
@@ -36,8 +70,6 @@ class GradebookController extends Controller
     public function showResults(Assessment $assessment): View
     {
         $teacherId = Auth::id();
-
-        // Security check to ensure this teacher is actually assigned to this assessment
         $isAssigned = DB::table('class_section_subject')
             ->where('class_section_id', $assessment->class_section_id)
             ->where('subject_id', $assessment->subject_id)
@@ -88,12 +120,11 @@ class GradebookController extends Controller
             }
         }
 
-        return redirect()->route('teacher.gradebook.index')
+        return redirect()->route('teacher.gradebook.assessments', ['classSection' => $assessment->classSection, 'subject' => $assessment->subject])
             ->with('success', 'Results for "' . $assessment->name . '" have been saved successfully!');
     }
 
     /**
-     * === THIS IS THE NEW METHOD FOR THE IMPORT FEATURE ===
      * Handle the CSV file upload from the results page modal.
      */
     public function handleResultsImport(Request $request, Assessment $assessment)
@@ -102,7 +133,6 @@ class GradebookController extends Controller
             'results_file' => 'required|file|mimes:csv,txt',
         ]);
 
-        // Security check: Ensure the teacher is authorized for this assessment
         $teacherId = Auth::id();
         $isAssigned = DB::table('class_section_subject')
             ->where('class_section_id', $assessment->class_section_id)
@@ -136,10 +166,8 @@ class GradebookController extends Controller
                 if (empty(implode('', $row))) continue;
                 $data = array_combine($header, $row);
 
-                // Find the student's ID by their email address
                 $studentId = $enrolledStudentEmails->search($data['student_email']);
 
-                // Only import the result if the student email was found and the score is a number
                 if ($studentId && is_numeric($data['score'])) {
                     Result::updateOrCreate(
                         [
@@ -162,5 +190,44 @@ class GradebookController extends Controller
 
         return redirect()->route('teacher.gradebook.results', $assessment)
             ->with('success', "$successCount results were successfully imported!");
+    }
+    
+    /**
+     * Generates a PDF summary of results for a single assessment.
+     */
+    public function printSummary(Assessment $assessment)
+    {
+        $teacherId = Auth::id();
+        $isAssigned = DB::table('class_section_subject')
+            ->where('class_section_id', $assessment->class_section_id)
+            ->where('subject_id', $assessment->subject_id)
+            ->where('teacher_id', $teacherId)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(403, 'You are not authorized to print a summary for this assessment.');
+        }
+
+        $assessment->load([
+            'classSection.students' => function ($query) {
+                $query->orderBy('name', 'asc');
+            },
+            'subject',
+            'term'
+        ]);
+        
+        $results = Result::where('assessment_id', $assessment->id)
+                         ->whereIn('user_id', $assessment->classSection->students->pluck('id'))
+                         ->get()
+                         ->keyBy('user_id');
+
+        $dataForPdf = [
+            'assessment' => $assessment,
+            'students' => $assessment->classSection->students,
+            'results' => $results
+        ];
+
+        $pdf = Pdf::loadView('pdf.marks-summary', $dataForPdf);
+        return $pdf->stream('marks-summary-' . str($assessment->name)->slug() . '.pdf');
     }
 }

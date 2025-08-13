@@ -55,26 +55,33 @@ class FinalReportController extends Controller
             $validated['term_id'],
             auth()->user()
         );
+        
+        // === FIX: Return JSON for JavaScript requests, otherwise redirect ===
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Your ranked report cards are being generated! You will be notified when they are ready.']);
+        }
 
         return redirect()->route('admin.final-reports.index')
             ->with('success', 'Your ranked report cards are being generated! You will be notified when they are ready.');
     }
 
     /**
-     * === THIS IS THE NEW METHOD ===
      * Step 3 (Single): Handle the single student generation link.
      */
     public function generateSingle(Request $request, int $student_id, int $class_id, int $term_id)
     {
-        // We still use the same job, but we pass the student ID as an array with one element.
         GenerateRankedReportJob::dispatch(
-            [$student_id], // Pass the student ID as an array
+            [$student_id],
             $class_id,
             $term_id,
             auth()->user()
         );
 
-        // Redirect back to the student list page with a success message.
+        // === FIX: Return JSON for JavaScript requests, otherwise redirect ===
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'The report is being generated! You will be notified when it is ready.']);
+        }
+
         return redirect()->route('admin.final-reports.show-students', ['class_id' => $class_id, 'term_id' => $term_id])
             ->with('success', 'The report is being generated! You will be notified when it is ready.');
     }

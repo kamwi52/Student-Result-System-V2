@@ -1,86 +1,77 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Enter Results for: ') }} {{ $assessment->name }}
-        </h2>
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                Enter Scores: {{ $assessment->name }}
+            </h2>
+            
+            {{-- This button allows the teacher to print a clean summary of the entered marks --}}
+            <a href="{{ route('teacher.gradebook.summary.print', $assessment) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
+                Print Summary
+            </a>
+        </div>
     </x-slot>
 
-    <div class="py-12" x-data="{ openModal: false }">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
+                {{-- The entire content is now a form that posts to the storeResults method --}}
+                <form method="POST" action="{{ route('teacher.gradebook.results.store', $assessment) }}">
+                    @csrf
+                    <div class="p-6 text-gray-900 dark:text-gray-100">
+                        <x-success-message/>
+                        <x-validation-errors class="mb-4" />
 
-                    <div class="mb-6 flex justify-between items-center">
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                {{ $assessment->classSection->name }} - {{ $assessment->subject->name }}
-                            </h3>
-                            <p class="text-sm text-gray-500">Max Marks: {{ $assessment->max_marks }}</p>
+                        <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+                            <p><span class="font-semibold">Class:</span> {{ $assessment->classSection->name }}</p>
+                            <p><span class="font-semibold">Subject:</span> {{ $assessment->subject->name }}</p>
+                            <p><span class="font-semibold">Max Marks:</span> {{ $assessment->max_marks }}</p>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            {{-- === THIS IS THE NEW IMPORT BUTTON === --}}
-                            <button @click="openModal = true" type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
-                                Import Results
-                            </button>
-                            <a href="{{ route('teacher.gradebook.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-600">
-                                Back to Gradebook
-                            </a>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    @forelse($students as $student)
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-gray-100">
+                                                {{ $student->name }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                {{-- This input is now part of the main form --}}
+                                                <input type="number" 
+                                                       name="scores[{{ $student->id }}]" 
+                                                       value="{{ old('scores.' . $student->id, $results[$student->id]->score ?? '') }}"
+                                                       class="w-full max-w-xs rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-900 dark:text-gray-100"
+                                                       step="0.01"
+                                                       min="0"
+                                                       max="{{ $assessment->max_marks }}">
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="2" class="px-6 py-4 text-center text-gray-500">
+                                                No students are enrolled in this class.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    
-                    @if($students->isEmpty())
-                        <p class="text-center text-gray-500 dark:text-gray-400">There are no students enrolled in this class.</p>
-                    @else
-                        <form method="POST" action="{{ route('teacher.gradebook.results.store', $assessment) }}">
-                            @csrf
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    {{-- ... table header ... --}}
-                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        @foreach ($students as $student)
-                                            <tr>
-                                                <td class="px-6 py-4 ...">{{ $student->name }}</td>
-                                                <td class="px-6 py-4 ...">
-                                                    <input type="number" name="scores[{{ $student->id }}]"
-                                                           value="{{ old('scores.' . $student->id, $results->get($student->id)->score ?? '') }}"
-                                                           class="w-24 ... rounded-md shadow-sm">
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="mt-6 flex justify-end">
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
-                                    Save Manually
-                                </button>
-                            </div>
-                        </form>
-                    @endif
-                </div>
-            </div>
-        </div>
 
-        <!-- === THIS IS THE NEW MODAL POP-UP === -->
-        <div x-show="openModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" style="display: none;">
-            <div @click.away="openModal = false" class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Import Results for {{ $assessment->name }}</h3>
-                
-                <div class="text-sm text-gray-600 dark:text-gray-400 mb-4 space-y-1">
-                    <p>Your CSV file must have two columns in this exact order:</p>
-                    <ul class="list-disc list-inside">
-                        <li><strong>student_email</strong></li>
-                        <li><strong>score</strong></li>
-                    </ul>
-                </div>
-                
-                <form method="POST" action="{{ route('teacher.gradebook.results.import', $assessment) }}" enctype="multipart/form-data">
-                    @csrf
-                    <input type="file" name="results_file" required class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none dark:border-gray-600">
-                    
-                    <div class="mt-6 flex justify-end space-x-2">
-                        <button type="button" @click="openModal = false" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Upload and Import</button>
+                    <div class="flex items-center justify-end px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                        <a href="{{ route('teacher.gradebook.assessments', ['classSection' => $assessment->classSection, 'subject' => $assessment->subject]) }}" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mr-4">
+                            Back to Assessments
+                        </a>
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                            Save All Results
+                        </button>
                     </div>
                 </form>
             </div>

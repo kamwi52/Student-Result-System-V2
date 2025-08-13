@@ -31,6 +31,7 @@ use App\Http\Controllers\Teacher\BulkGradeController;
 use App\Http\Controllers\Teacher\GradebookController;
 use App\Http\Controllers\Teacher\ResultController as TeacherResultController;
 use App\Http\Controllers\Teacher\AssignmentController;
+use App\Http\Controllers\Teacher\ReportCardController as TeacherReportCardController;
 
 // Student Controllers
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
@@ -54,40 +55,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
-// Admin Routes
-Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
-    
-    // Management Routes
-    Route::resource('users', UserController::class);
-    Route::resource('subjects', SubjectController::class);
-    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
-    Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
-    Route::match(['get', 'post'], '/enrollments/bulk-manage', [EnrollmentController::class, 'showBulkManageForm'])->name('enrollments.bulk-manage.show');
-    Route::post('/enrollments/bulk-save', [EnrollmentController::class, 'handleBulkManage'])->name('enrollments.bulk-manage.handle');
-    Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
-    Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
-    Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
-    Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
-    Route::resource('assessments', AssessmentController::class);
-    Route::resource('results', AdminResultController::class);
-    
-    // Settings Routes
-    Route::resource('grading-scales', GradingScaleController::class);
-    Route::resource('academic-sessions', AcademicSessionController::class);
-    Route::resource('terms', TermController::class);
-    
-    // Reporting Routes
-    Route::prefix('final-reports')->name('final-reports.')->group(function() {
-        Route::get('/', [FinalReportController::class, 'index'])->name('index');
-        Route::get('/show-students', [FinalReportController::class, 'showStudents'])->name('show-students');
-        Route::post('/generate', [FinalReportController::class, 'generate'])->name('generate');
-        Route::get('/generate-single/{student_id}/{class_id}/{term_id}', [FinalReportController::class, 'generateSingle'])->name('generate-single');
-    });
-
-    // Notification and Download Routes
     Route::get('/notifications/{notification}', function (DatabaseNotification $notification) {
         $notification->markAsRead();
         if (isset($notification->data['action_url']) && $notification->data['action_url']) {
@@ -97,27 +65,70 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     })->name('notifications.show');
 
     Route::get('/reports/download-generated-file', function(Request $request) {
-        if (!$request->hasValidSignature()) { abort(401); }
+        if (!$request->hasValidSignature()) { abort(401, 'Invalid or expired download link.'); }
         $filePath = $request->query('filename');
         if (Storage::disk('private')->exists($filePath)) { return Storage::disk('private')->download($filePath); }
-        abort(404, 'File not found or link has expired.');
+        abort(404, 'File not found or has been removed.');
     })->name('reports.download.generated');
+});
+
+// Admin Routes
+Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
+    
+    // User Management
+    Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
+    Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
+    Route::resource('users', UserController::class);
+
+    // Subject Management
+    Route::resource('subjects', SubjectController::class);
+
+    // Class Management
+    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
+    Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
+    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
+    Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
+
+    // Enrollment Management
+    Route::match(['get', 'post'], '/enrollments/bulk-manage', [EnrollmentController::class, 'showBulkManageForm'])->name('enrollments.bulk-manage.show');
+    Route::post('/enrollments/bulk-save', [EnrollmentController::class, 'handleBulkManage'])->name('enrollments.bulk-manage.handle');
+    Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
+    Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
+
+    // Assessment Management
+    Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
+    Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
+    Route::resource('assessments', AssessmentController::class);
+    Route::resource('results', AdminResultController::class);
+
+    // Settings Management
+    Route::resource('grading-scales', GradingScaleController::class);
+    Route::resource('academic-sessions', AcademicSessionController::class);
+    Route::resource('terms', TermController::class);
+
+    // Reporting Management
+    Route::prefix('final-reports')->name('final-reports.')->group(function() {
+        Route::get('/', [FinalReportController::class, 'index'])->name('index');
+        Route::get('/show-students', [FinalReportController::class, 'showStudents'])->name('show-students');
+        Route::post('/generate', [FinalReportController::class, 'generate'])->name('generate');
+        Route::get('/generate-single/{student_id}/{class_id}/{term_id}', [FinalReportController::class, 'generateSingle'])->name('generate-single');
+    });
 });
 
 // Teacher Routes
 Route::middleware(['auth', 'is.teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
     
-    // Gradebook Routes
-    Route::get('gradebook', [GradebookController::class, 'index'])->name('gradebook.index');
-    Route::get('gradebook/{assessment}/results', [GradebookController::class, 'showResults'])->name('gradebook.results');
-    Route::post('gradebook/{assessment}/results', [GradebookController::class, 'storeResults'])->name('gradebook.results.store');
+    // New Streamlined Gradebook Workflow
+    Route::get('/gradebook/{classSection}/{subject}/edit', [GradebookController::class, 'findAndEditLatestAssessment'])->name('gradebook.find-and-edit');
+    Route::get('/gradebook/{assessment}/results', [GradebookController::class, 'showResults'])->name('gradebook.results');
+    Route::post('/gradebook/{assessment}/results', [GradebookController::class, 'storeResults'])->name('gradebook.results.store');
     
-    // === THIS IS THE MISSING ROUTE THAT CAUSED THE ERROR ===
-    Route::post('gradebook/{assessment}/results/import', [GradebookController::class, 'handleResultsImport'])->name('teacher.gradebook.results.import');
-    // =======================================================
-
-    Route::post('/reports/generate-bulk', [ReportCardController::class, 'generateBulkForTeacher'])->name('reports.generate-bulk');
+    // Other Gradebook Features
+    Route::get('/gradebook/{classSection}/{subject}', [GradebookController::class, 'showAssessments'])->name('gradebook.assessments');
+    Route::post('/gradebook/{assessment}/results/import', [GradebookController::class, 'handleResultsImport'])->name('gradebook.results.import');
+    Route::get('/gradebook/{assessment}/summary/print', [GradebookController::class, 'printSummary'])->name('gradebook.summary.print');
 });
 
 // Student Routes

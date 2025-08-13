@@ -56,9 +56,9 @@ class ReportGeneratedNotification extends Notification implements ShouldQueue
                 ->line('Please try again or contact an administrator if the problem persists.');
         }
 
-        // === FIX: Updated the route name to the new, non-conflicting one ===
+        // === FIX: The route name has been corrected ===
         $downloadUrl = URL::temporarySignedRoute(
-            'admin.reports.download.generated', // <-- CORRECTED
+            'reports.download.generated', // <-- REMOVED 'admin.' prefix
             now()->addHours(24),
             ['filename' => $this->filename]
         );
@@ -88,9 +88,9 @@ class ReportGeneratedNotification extends Notification implements ShouldQueue
             ];
         }
         
-        // === FIX: Updated the route name to the new, non-conflicting one ===
+        // === FIX: The route name has been corrected ===
         $downloadUrl = URL::temporarySignedRoute(
-            'admin.reports.download.generated', // <-- CORRECTED
+            'reports.download.generated', // <-- REMOVED 'admin.' prefix
             now()->addHours(24),
             ['filename' => $this->filename]
         );

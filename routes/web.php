@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ReportCardController;
 
 // Admin Controllers
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportingController;
 use App\Http\Controllers\Admin\FinalReportController;
 use App\Http\Controllers\Admin\UserController;
@@ -74,7 +75,8 @@ Route::middleware('auth')->group(function () {
 
 // Admin Routes
 Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', function() { return redirect()->route('admin.users.index'); })->name('dashboard');
+    // === FIX: The admin dashboard route now points to the new DashboardController ===
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     
     // User Management
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');

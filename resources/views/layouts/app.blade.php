@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale-1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
@@ -13,11 +13,14 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        {{-- === FIX: Added the core script for the charting library === --}}
+        <script src="{{ asset('vendor/larapex-charts/apexcharts.js') }}"></script>
     </head>
     <body class="font-sans antialiased">
         <div class="bg-gray-100 dark:bg-gray-900">
 
-            {{-- === THIS IS THE FIX: The sidebar is now part of this main layout file === --}}
+            {{-- The sidebar is now part of this main layout file --}}
             <!-- Main Sidebar -->
             <aside id="logo-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-white border-r border-gray-200 sm:translate-x-0 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidebar">
                 @include('layouts.partials.sidebar') {{-- Keep sidebar content in a partial for cleanliness --}}
@@ -45,6 +48,7 @@
 
         </div>
         
+        {{-- This is where the chart-specific scripts will be injected. It is correct. --}}
         @stack('scripts')
     </body>
 </html>

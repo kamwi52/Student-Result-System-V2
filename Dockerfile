@@ -60,4 +60,4 @@ EXPOSE 8000
 # The 'CMD' is now passed TO the wait script after the database is ready.
 # This CMD now correctly includes both the migration and the server start command.
 ENTRYPOINT ["wait-for-db.sh"]
-CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "php artisan config:clear && php artisan migrate --force && php artisan serve --host 0.0.0.0 --port $PORT"]

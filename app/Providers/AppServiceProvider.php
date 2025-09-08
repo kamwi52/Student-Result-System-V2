@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL; // CRITICAL: This line must be present
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,12 +20,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        try {
-            // Load all settings from the database and share them with every view
-            $settings = \App\Models\Setting::pluck('value', 'key')->all();
-            view()->share('settings', $settings);
-        } catch (\Exception $e) {
-            // Do nothing if the table doesn't exist yet
+        // === THIS IS THE FIX ===
+        // This code checks if the application is running in the 'production' environment (like on Railway).
+        // If it is, it forces Laravel to always generate secure HTTPS URLs for all assets and links.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
         }
     }
 }

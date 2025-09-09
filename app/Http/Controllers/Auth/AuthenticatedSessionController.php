@@ -11,9 +11,7 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Display the login view.
-     */
+    // ... create() method is here ...
     public function create(): View
     {
         return view('auth.login');
@@ -28,11 +26,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $role = Auth::user()->role;
+        // === THIS IS THE INTERROGATION ===
+        // This command will halt the application and display the authenticated user's data.
+        // We will see, without question, what role the system is assigning to you at login.
+        dd(Auth::user());
 
-        // === THIS IS THE DEFINITIVE FIX ===
-        // We have removed `.intended()` to make the redirects absolute and non-negotiable.
-        // The user will ALWAYS be sent to the correct dashboard for their role.
+        // The code below this line will not be executed during the test.
+        $role = Auth::user()->role;
 
         switch ($role) {
             case 'admin':
@@ -42,22 +42,16 @@ class AuthenticatedSessionController extends Controller
             case 'student':
                 return redirect(route('student.dashboard'));
             default:
-                // As a safe fallback, redirect to the generic home route.
                 return redirect('/home');
         }
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
+    // ... destroy() method is here ...
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
-
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
-
         return redirect('/');
     }
 }

@@ -12,11 +12,6 @@ class LoginController extends Controller
     |--------------------------------------------------------------------------
     | Login Controller
     |--------------------------------------------------------------------------
-    |
-    | This controller handles authenticating users for the application and
-    | redirecting them to your home screen. The controller uses a trait
-    | to conveniently provide its functionality to your applications.
-    |
     */
 
     use AuthenticatesUsers;
@@ -32,22 +27,30 @@ class LoginController extends Controller
     }
 
     /**
-     * Get the post-login redirect path.
-     * This method contains our custom role-based redirect logic.
+     * Get the post-authentication redirect path.
+     *
+     * This method overrides the default redirection logic. It is the single
+     * source of truth for where a user goes after logging in.
+     *
+     * @return string
      */
     protected function redirectTo()
     {
-        $user = Auth::user();
+        $role = Auth::user()->role;
 
-        if ($user->role === 'admin') {
-            return route('admin.users.index'); // Admins go to User Management
+        switch ($role) {
+            case 'admin':
+                // Admins are sent directly to the user management page.
+                return route('admin.users.index');
+            case 'teacher':
+                return route('teacher.dashboard');
+            case 'student':
+                return route('student.dashboard');
+            default:
+                // For security, if a user has no role or an unknown role,
+                // log them out and redirect to the login page.
+                Auth::logout();
+                return '/login';
         }
-
-        if ($user->role === 'teacher') {
-            return route('teacher.dashboard'); // Teachers go to their dashboard
-        }
-
-        // Default for students or any other role
-        return '/home';
     }
 }

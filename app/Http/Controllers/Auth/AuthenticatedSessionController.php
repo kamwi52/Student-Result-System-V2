@@ -28,22 +28,22 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // === THIS IS THE FINAL FIX ===
-        // We add our role-based redirection logic directly here,
-        // which is the method Breeze uses after a successful login.
-
         $role = Auth::user()->role;
+
+        // === THIS IS THE DEFINITIVE FIX ===
+        // We have removed `.intended()` to make the redirects absolute and non-negotiable.
+        // The user will ALWAYS be sent to the correct dashboard for their role.
 
         switch ($role) {
             case 'admin':
-    return redirect()->intended(route('admin.users.index'));
+                return redirect(route('admin.users.index'));
             case 'teacher':
-                return redirect()->intended(route('teacher.dashboard'));
+                return redirect(route('teacher.dashboard'));
             case 'student':
-                return redirect()->intended(route('student.dashboard'));
+                return redirect(route('student.dashboard'));
             default:
                 // As a safe fallback, redirect to the generic home route.
-                return redirect()->intended('/home');
+                return redirect('/home');
         }
     }
 

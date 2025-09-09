@@ -2,33 +2,30 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User; // Ensure the User model is imported
+use App\Models\User;
 
 class AdminUserSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      *
-     * This seeder ensures a default administrator account exists in the database.
-     * It uses updateOrCreate(), which safely finds an existing user by email
-     * or creates a new one if they don't exist, preventing duplicate admin accounts.
+     * This seeder aggressively ensures the admin user exists and has the correct role.
+     * It will find an existing user by email and forcefully update their role to 'admin',
+     * or it will create a new admin user if one does not exist.
      */
     public function run(): void
     {
-        User::updateOrCreate(
-            [
-                // This is the unique identifier to find the user.
-                'email' => 'admin@app.com',
-            ],
-            [
-                // These are the values to set if the user is created or updated.
-                'name'     => 'System Administrator',
-                'password' => Hash::make('password'), // IMPORTANT: Change 'password' to a strong, secure password.
-                'role'     => 'admin',                // This grants administrator privileges.
-            ]
-        );
+        // Find the user by email, or prepare to create a new one.
+        $admin = User::firstOrNew(['email' => 'admin@app.com']);
+
+        // Set or forcefully overwrite the user's attributes.
+        $admin->name = 'System Administrator';
+        $admin->password = Hash::make('password'); // This will reset the password on every deploy.
+        $admin->role = 'admin'; // This is the critical line that forces the role.
+
+        // Save the record to the database.
+        $admin->save();
     }
 }

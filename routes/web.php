@@ -84,7 +84,7 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/downloads/subjects-template', [DashboardController::class, 'downloadSubjectsTemplate'])->name('downloads.subjects-template');
     // === THIS IS THE NEWLY ADDED ROUTE ===
     Route::get('/downloads/results-template', [DashboardController::class, 'downloadResultsTemplate'])->name('downloads.results-template');
-
+        Route::get('/downloads/user-guide', [DashboardController::class, 'downloadUserGuide'])->name('downloads.user-guide');
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
     Route::resource('users', UserController::class);

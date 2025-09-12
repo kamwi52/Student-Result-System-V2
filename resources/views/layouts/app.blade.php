@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale-1">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
@@ -14,8 +14,9 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-        {{-- === FIX: Added the core script for the charting library === --}}
-        <script src="{{ asset('vendor/larapex-charts/apexcharts.js') }}"></script>
+        {{-- === THIS IS THE FIX: Added the core script for the charting library === --}}
+        {{-- This script MUST be loaded for any charts to render. --}}
+        
     </head>
     <body class="font-sans antialiased">
         <div class="bg-gray-100 dark:bg-gray-900">

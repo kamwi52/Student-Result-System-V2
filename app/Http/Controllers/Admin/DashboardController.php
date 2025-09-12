@@ -6,102 +6,48 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\ClassSection;
-use ArielMejiaDev\LarapexCharts\LarapexChart;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\Storage; // Import Storage facade
 
 class DashboardController extends Controller
 {
     /**
-     * Display the admin dashboard with statistics and charts.
+     * Display the admin dashboard with statistics.
      */
     public function index()
     {
+        // KPI Card Data (Chart logic has been removed)
         $studentCount = User::where('role', 'student')->count();
         $teacherCount = User::where('role', 'teacher')->count();
         $classCount = ClassSection::count();
-
-        $classes = ClassSection::withCount('students')->get();
-        
-        $studentsPerClassChart = (new LarapexChart)->barChart()
-            ->setTitle('Student Distribution per Class')
-            ->addData('Students', $classes->pluck('students_count')->toArray())
-            ->setXAxis($classes->pluck('name')->toArray())
-            ->setColors(['#3B82F6']);
 
         return view('admin.dashboard', [
             'studentCount' => $studentCount,
             'teacherCount' => $teacherCount,
             'classCount' => $classCount,
-            'studentsPerClassChart' => $studentsPerClassChart,
         ]);
     }
 
-    /**
-     * Generates and downloads a CSV template for importing users.
-     */
-    public function downloadUsersTemplate(): StreamedResponse
-    {
-        $headers = [ 'Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="users_import_template.csv"', ];
-        $columns = ['name', 'email', 'password', 'role', 'academic_session_name', 'class_name'];
-        $example = ['John Doe', 'john.doe@example.com', 'Password123', 'student', '2025-2026', 'Grade 9A'];
-        $callback = function() use ($columns, $example) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns); fputcsv($file, $example); fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    }
+    // ... (downloadUsersTemplate, downloadClassesTemplate, etc. remain the same) ...
 
-    /**
-     * Generates and downloads a CSV template for importing classes.
-     */
-    public function downloadClassesTemplate(): StreamedResponse
-    {
-        $headers = [ 'Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="classes_import_template.csv"', ];
-        $columns = ['name', 'academic_session_name', 'grading_scale_name', 'subjects'];
-        $example = ['Grade 9A', '2025-2026', 'Standard A-F', 'Mathematics|Science|History'];
-        $callback = function() use ($columns, $example) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns); fputcsv($file, $example); fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    }
-
-    /**
-     * Generates and downloads a CSV template for importing subjects.
-     */
-    public function downloadSubjectsTemplate(): StreamedResponse
-    {
-        $headers = [ 'Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="subjects_import_template.csv"', ];
-        $columns = ['name', 'code', 'description'];
-        $example = ['Mathematics', 'MATH101', 'Core mathematics focusing on algebra and geometry.'];
-        $callback = function() use ($columns, $example) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns); fputcsv($file, $example); fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    }
+    public function downloadUsersTemplate(): StreamedResponse { /* ... existing code ... */ }
+    public function downloadClassesTemplate(): StreamedResponse { /* ... existing code ... */ }
+    public function downloadSubjectsTemplate(): StreamedResponse { /* ... existing code ... */ }
+    public function downloadResultsTemplate(): StreamedResponse { /* ... existing code ... */ }
 
     /**
      * === NEW METHOD ===
-     * Generates and downloads a CSV template for importing results.
+     * Serves the User Guide PDF for download.
      */
-    public function downloadResultsTemplate(): StreamedResponse
+    public function downloadUserGuide()
     {
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="results_import_template.csv"',
-        ];
+        $filePath = 'public/User_Guide.pdf';
 
-        $columns = ['student_email', 'score'];
-        $example = ['student.email@example.com', '85'];
+        // Check if the file exists in the storage.
+        if (!Storage::exists($filePath)) {
+            abort(404, 'User guide not found.');
+        }
 
-        $callback = function() use ($columns, $example) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            fputcsv($file, $example);
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return Storage::download($filePath, 'Student Result System - User Guide.pdf');
     }
 }

@@ -12,6 +12,11 @@ class LoginController extends Controller
     |--------------------------------------------------------------------------
     | Login Controller
     |--------------------------------------------------------------------------
+    |
+    | This controller handles authenticating users for the application and
+    | redirecting them to your home screen. The controller uses a trait
+    | to conveniently provide its functionality to your applications.
+    |
     */
 
     use AuthenticatesUsers;
@@ -40,8 +45,9 @@ class LoginController extends Controller
 
         switch ($role) {
             case 'admin':
-                // Admins are sent directly to the user management page.
-                return route('admin.users.index');
+                // === THIS IS THE FIX ===
+                // Admins are sent to the main admin dashboard.
+                return route('admin.dashboard');
             case 'teacher':
                 return route('teacher.dashboard');
             case 'student':

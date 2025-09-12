@@ -33,16 +33,16 @@ class HomeController extends Controller
 
         // Check the user's role and redirect accordingly.
         if ($user->role === 'admin') {
-            // Admins are redirected to the user management page.
-            return redirect()->route('admin.users.index');
+            // === THIS IS THE FIX (for consistency) ===
+            // Admins are redirected to the main admin dashboard.
+            return redirect()->route('admin.dashboard');
         }
 
         if ($user->role === 'teacher') {
             // Teachers are redirected to their specific dashboard.
             return redirect()->route('teacher.dashboard');
         }
-        
-        // === FIX: Added the missing check for the 'student' role ===
+
         if ($user->role === 'student') {
             // Students are redirected to their specific dashboard.
             return redirect()->route('student.dashboard');
@@ -50,7 +50,6 @@ class HomeController extends Controller
 
         // Fallback for any other user role or if no role is set.
         // This will render the generic 'resources/views/dashboard.blade.php' view.
-        // It's better to use 'dashboard' as the fallback view name, which is a Laravel standard.
         return view('dashboard');
     }
 }

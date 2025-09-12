@@ -20,56 +20,54 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation
     */
     public function model(array $row)
     {
-        // Find or create the user based on their email
+        // === THIS IS THE FIX: Clean the incoming data ===
+        // 1. Trim leading/trailing whitespace and collapse multiple spaces within the name into a single space.
+        $cleanedName = preg_replace('/\s+/', ' ', trim($row['name']));
+        // 2. Trim any whitespace from the email.
+        $cleanedEmail = trim($row['email']);
+        // === END FIX ===
+
+        // Find or create the user based on their CLEANED email
         $user = User::updateOrCreate(
-            ['email' => $row['email']],
+            ['email' => $cleanedEmail],
             [
-                'name'     => $row['name'],
+                'name'     => $cleanedName, // Use the cleaned name
                 'password' => Hash::make($row['password']),
                 'role'     => strtolower($row['role']),
             ]
         );
 
         // --- AUTO-ENROLLMENT LOGIC ---
-        // If the user is a student and class details are provided, enroll them.
         if (strtolower($row['role']) === 'student' && !empty($row['class_name']) && !empty($row['academic_session_name'])) {
             $academicSession = AcademicSession::where('name', $row['academic_session_name'])->first();
             
-            // Important: We proceed only if the session exists. Validation rules below will catch the error if it doesn't.
             if ($academicSession) {
                 $classSection = ClassSection::where('name', $row['class_name'])
                                             ->where('academic_session_id', $academicSession->id)
                                             ->first();
                 
-                // If the class is found, attach the student.
                 if ($classSection) {
                     $classSection->students()->syncWithoutDetaching($user->id);
                 }
             }
         }
-        // --- END OF AUTO-ENROLLMENT LOGIC ---
         
         return $user;
     }
 
     /**
      * Define the validation rules for each row.
-     *
-     * @return array
      */
     public function rules(): array
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'required|email', // 'unique' check is handled by updateOrCreate
+            'email' => 'required|email',
             'password' => 'required',
             'role' => ['required', Rule::in(['admin', 'teacher', 'student'])],
-            
-            // These rules will check if the provided names exist in the database.
-            // 'nullable' allows them to be empty for non-student roles.
             'academic_session_name' => [
                 'nullable',
-                'required_with:class_name', // Required if class_name is present
+                'required_with:class_name',
                 Rule::exists('academic_sessions', 'name'),
             ],
             'class_name' => [
@@ -81,8 +79,6 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation
 
     /**
      * Custom validation messages.
-     *
-     * @return array
      */
     public function customValidationMessages()
     {

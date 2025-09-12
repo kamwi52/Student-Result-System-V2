@@ -6,11 +6,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Notifications\DatabaseNotification;
 
-// ... (all your controller imports)
+// Import all controllers
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ReportCardController;
+
+// Admin Controllers
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportingController;
 use App\Http\Controllers\Admin\FinalReportController;
@@ -23,13 +25,19 @@ use App\Http\Controllers\Admin\ResultController as AdminResultController;
 use App\Http\Controllers\Admin\GradingScaleController;
 use App\Http\Controllers\Admin\AcademicSessionController;
 use App\Http\Controllers\Admin\TermController;
+
+// Teacher Controllers
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
 use App\Http\Controllers\Teacher\BulkGradeController;
 use App\Http\Controllers\Teacher\GradebookController;
 use App\Http\Controllers\Teacher\ResultController as TeacherResultController;
 use App\Http\Controllers\Teacher\AssignmentController;
 use App\Http\Controllers\Teacher\ReportCardController as TeacherReportCardController;
+
+// Student Controllers
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
+
+// Middleware
 use App\Http\Middleware\IsStudent;
 
 /*
@@ -38,7 +46,9 @@ use App\Http\Middleware\IsStudent;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () { return view('welcome'); });
+Route::get('/', function () {
+    return view('welcome');
+});
 
 Auth::routes();
 
@@ -71,19 +81,33 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/downloads/users-template', [DashboardController::class, 'downloadUsersTemplate'])->name('downloads.users-template');
     Route::get('/downloads/classes-template', [DashboardController::class, 'downloadClassesTemplate'])->name('downloads.classes-template');
+    Route::get('/downloads/subjects-template', [DashboardController::class, 'downloadSubjectsTemplate'])->name('downloads.subjects-template');
+    // === THIS IS THE NEWLY ADDED ROUTE ===
+    Route::get('/downloads/results-template', [DashboardController::class, 'downloadResultsTemplate'])->name('downloads.results-template');
 
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
     Route::resource('users', UserController::class);
-
-    // === FINAL FIX: Changed the URI to be more unique and method back to DELETE ===
     Route::delete('users/bulk/destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
 
+    Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
+    Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
     Route::resource('subjects', SubjectController::class);
+
     Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
     Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
     Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
+
+    Route::prefix('results/import')->name('results.import.')->group(function () {
+        Route::get('/step-1', [AdminResultController::class, 'showImportStep1'])->name('show_step1');
+        Route::post('/step-1', [AdminResultController::class, 'handleImportStep1'])->name('handle_step1');
+        Route::post('/prepare-step-2', [AdminResultController::class, 'prepareImportStep2'])->name('prepare_step2');
+        Route::get('/step-2', [AdminResultController::class, 'showImportStep2'])->name('show_step2');
+        Route::post('/step-2', [AdminResultController::class, 'handleImport'])->name('handle');
+    });
+    Route::resource('results', AdminResultController::class);
+
     Route::match(['get', 'post'], '/enrollments/bulk-manage', [EnrollmentController::class, 'showBulkManageForm'])->name('enrollments.bulk-manage.show');
     Route::post('/enrollments/bulk-save', [EnrollmentController::class, 'handleBulkManage'])->name('enrollments.bulk-manage.handle');
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
@@ -91,7 +115,6 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
     Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
     Route::resource('assessments', AssessmentController::class);
-    Route::resource('results', AdminResultController::class);
     Route::resource('grading-scales', GradingScaleController::class);
     Route::resource('academic-sessions', AcademicSessionController::class);
     Route::resource('terms', TermController::class);

@@ -15,16 +15,21 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 dark:bg-gray-900">
+        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-900" style="background-color: #111827; background-image: radial-gradient(at 47% 33%, hsl(218.00, 0%, 100%) 0, transparent 59%), radial-gradient(at 82% 65%, hsl(218.00, 39%, 25%) 0, transparent 55%);">
+            
+            {{-- Logo --}}
             <div>
                 <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
+                    <x-application-logo class="w-24 h-24 fill-current text-gray-400" />
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg">
+            {{-- Auth Card --}}
+            {{-- === THIS IS THE FIX: Adjusted background color for better contrast === --}}
+            <div class="w-full sm:max-w-md mt-6 px-6 py-8 bg-gray-800/80 shadow-2xl overflow-hidden sm:rounded-2xl backdrop-blur-sm border border-gray-700/50">
                 {{ $slot }}
             </div>
+            
         </div>
     </body>
 </html>

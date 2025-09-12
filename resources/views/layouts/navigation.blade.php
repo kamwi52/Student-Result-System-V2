@@ -5,14 +5,21 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
+                    {{-- FIX: The dashboard route should be specific to the user's role --}}
+                    @php
+                        $dashboardRoute = 'dashboard'; // Default
+                        if (Auth::user()->role === 'admin') $dashboardRoute = 'admin.dashboard';
+                        if (Auth::user()->role === 'teacher') $dashboardRoute = 'teacher.dashboard';
+                        if (Auth::user()->role === 'student') $dashboardRoute = 'student.dashboard';
+                    @endphp
+                    <a href="{{ route($dashboardRoute) }}">
                         <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
                     </a>
                 </div>
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route($dashboardRoute)" :active="request()->routeIs($dashboardRoute)">
                         {{ __('Dashboard') }}
                     </x-nav-link>
 
@@ -27,25 +34,19 @@
                                     </button>
                                 </x-slot>
                                 <x-slot name="content">
-                                    {{-- Settings Links --}}
-                                    <div class="border-b border-gray-200 dark:border-gray-600">
-                                        <div class="block px-4 py-2 text-xs text-gray-400">Settings</div>
+                                    <div class="border-b border-gray-200 dark:border-gray-600"><div class="block px-4 py-2 text-xs text-gray-400">Settings</div>
                                         <x-dropdown-link :href="route('admin.academic-sessions.index')" :active="request()->routeIs('admin.academic-sessions.*')">Academic Sessions</x-dropdown-link>
                                         <x-dropdown-link :href="route('admin.terms.index')" :active="request()->routeIs('admin.terms.*')">Manage Terms</x-dropdown-link>
                                         <x-dropdown-link :href="route('admin.grading-scales.index')" :active="request()->routeIs('admin.grading-scales.*')">Grading Scales</x-dropdown-link>
                                     </div>
-                                    {{-- Management Links --}}
-                                    <div class="border-b border-gray-200 dark:border-gray-600">
-                                        <div class="block px-4 py-2 text-xs text-gray-400">Management</div>
+                                    <div class="border-b border-gray-200 dark:border-gray-600"><div class="block px-4 py-2 text-xs text-gray-400">Management</div>
                                         <x-dropdown-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">Manage Users</x-dropdown-link>
                                         <x-dropdown-link :href="route('admin.classes.index')" :active="request()->routeIs('admin.classes.*')">Manage Classes & Subjects</x-dropdown-link>
                                         <x-dropdown-link :href="route('admin.enrollments.bulk-manage.show')" :active="request()->routeIs('admin.enrollments.bulk-manage.show')">Bulk Student Enrollment</x-dropdown-link>
                                         <x-dropdown-link :href="route('admin.assessments.index')" :active="request()->routeIs('admin.assessments.*')">Manage Assessments</x-dropdown-link>
                                         <x-dropdown-link :href="route('admin.results.index')" :active="request()->routeIs('admin.results.*')">Manage Results</x-dropdown-link>
                                     </div>
-                                    {{-- Reporting Section --}}
-                                    <div class="border-b border-gray-200 dark:border-gray-600">
-                                        <div class="block px-4 py-2 text-xs text-gray-400">Reporting</div>
+                                    <div class="border-b border-gray-200 dark:border-gray-600"><div class="block px-4 py-2 text-xs text-gray-400">Reporting</div>
                                         <x-dropdown-link :href="route('admin.final-reports.index')" :active="request()->routeIs('admin.final-reports.*')">Generate Report Cards</x-dropdown-link>
                                     </div>
                                 </x-slot>
@@ -55,32 +56,41 @@
                 </div>
             </div>
 
-            <!-- Settings Dropdown (Profile Picture Area) -->
+            <!-- Right side of Navbar: Notifications and Profile -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 
-                <!-- Notifications Dropdown -->
+                <!-- === NEW: Fully Functional Notification Dropdown === -->
                 <div class="ms-3 relative">
-                    <x-dropdown align="right" width="60">
+                    <x-dropdown align="right" width="96">
                         <x-slot name="trigger">
-                            <button class="relative inline-flex items-center p-2 border border-transparent text-sm leading-4 font-medium rounded-full text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                            <button class="relative inline-flex items-center p-2 text-sm font-medium text-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none">
+                                <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M15.133 10.632v-1.8a5.406 5.406 0 0 0-4.154-5.262.955.955 0 0 0 .021-.215 1.003 1.003 0 0 0-1.002-1.002A1 1 0 0 0 9 3.367a.955.955 0 0 0 .021.215 5.406 5.406 0 0 0-4.154 5.262v1.8C4.867 13.018 3 13.614 3 14.807 3 15.4 3 16 3.538 16h12.924C17 16 17 15.4 17 14.807c0-1.193-1.867-1.789-1.867-4.175ZM10 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
                                 @if(Auth::user() && Auth::user()->unreadNotifications->count())
-                                    <span class="absolute top-0 right-0 -mt-1 -mr-1 text-xs font-bold text-white bg-red-500 rounded-full px-1.5 py-0.5">{{ Auth::user()->unreadNotifications->count() }}</span>
+                                    <div class="absolute inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 border-2 border-white rounded-full -top-1 -end-1 dark:border-gray-900">{{ Auth::user()->unreadNotifications->count() }}</div>
                                 @endif
                             </button>
                         </x-slot>
                         <x-slot name="content">
-                            <div class="px-4 py-2 text-xs text-gray-400">Notifications</div>
+                            <div class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-400 font-bold uppercase">Notifications</div>
                             @if(Auth::user())
-                                @forelse (Auth::user()->unreadNotifications as $notification)
-                                    <div class="border-t border-gray-200 dark:border-gray-600"></div>
-                                    {{-- === THIS IS THE LINE THAT WAS FIXED === --}}
-                                    <a href="{{ route('notifications.show', $notification->id) }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                        <p class="font-semibold">{{ $notification->data['title'] ?? 'Notification' }}</p>
-                                        <p class="text-xs">{{ $notification->data['message'] ?? 'You have a new notification.' }}</p>
+                                @forelse (Auth::user()->notifications->take(5) as $notification)
+                                    <a href="{{ route('notifications.show', $notification->id) }}" class="block w-full px-4 py-3 text-start text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 transition duration-150 ease-in-out @if($notification->unread()) font-bold @endif">
+                                        <div class="flex items-start space-x-3">
+                                            <div>
+                                                @if($notification->data['status'] === 'success')
+                                                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                                @else
+                                                    <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                <p class="text-sm">{{ $notification->data['message'] }}</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
+                                            </div>
+                                        </div>
                                     </a>
                                 @empty
-                                    <div class="block px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No new notifications</div>
+                                    <div class="px-4 py-3 text-sm text-center text-gray-500 dark:text-gray-400">You have no notifications.</div>
                                 @endforelse
                             @endif
                         </x-slot>
@@ -116,6 +126,6 @@
 
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        {{-- ... (responsive menu code remains unchanged) ... --}}
+        {{-- Responsive menu code remains unchanged --}}
     </div>
 </nav>

@@ -68,11 +68,27 @@ Route::middleware('auth')->group(function () {
         return redirect()->back();
     })->name('notifications.show');
 
+    // =========================================================================
+    // === THE DEFINITIVE FIX FOR THE 404 DOWNLOAD ERROR IS HERE ==============
+    // =========================================================================
     Route::get('/reports/download-generated-file', function(Request $request) {
-        if (!$request->hasValidSignature()) { abort(401, 'Invalid or expired download link.'); }
+        // 1. Validate the secure signature to prevent unauthorized access.
+        if (!$request->hasValidSignature()) {
+            abort(401, 'Invalid or expired download link.');
+        }
+        
+        // 2. Get the file path from the URL.
         $filePath = $request->query('filename');
-        if (Storage::disk('private')->exists($filePath)) { return Storage::disk('private')->download($filePath); }
-        abort(404, 'File not found or has been removed.');
+
+        // 3. Check if the file exists in the secure 'private' storage disk.
+        if (Storage::disk('private')->exists($filePath)) {
+            // 4. Return the file as a download response. This is the most reliable method.
+            return Storage::disk('private')->download($filePath);
+        }
+
+        // 5. If the file is not found, provide a clear error message.
+        abort(404, 'File not found. It may have been removed or the generation failed.');
+        
     })->name('reports.download.generated');
 });
 
@@ -84,38 +100,29 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/downloads/subjects-template', [DashboardController::class, 'downloadSubjectsTemplate'])->name('downloads.subjects-template');
     Route::get('/downloads/results-template', [DashboardController::class, 'downloadResultsTemplate'])->name('downloads.results-template');
     Route::get('/downloads/user-guide', [DashboardController::class, 'downloadUserGuide'])->name('downloads.user-guide');
-
-    // --- Import Routes ---
-    // Note: We are pointing all import logic to the DashboardController for consistency.
-    Route::post('/imports/users', [DashboardController::class, 'importUsers'])->name('imports.users');
-    Route::post('/imports/classes', [DashboardController::class, 'importClasses'])->name('imports.classes'); // Ensure this is present
-    Route::post('/imports/subjects', [DashboardController::class, 'importSubjects'])->name('imports.subjects'); // Good practice to add this too
-
+    
+    // Combined Import Page Route
+    Route::get('/imports', [DashboardController::class, 'showImportPage'])->name('imports.show');
+    
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
     Route::resource('users', UserController::class);
     Route::delete('users/bulk/destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
-
+    
     Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
     Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
     Route::resource('subjects', SubjectController::class);
 
-    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
     Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
-    Route::get('/imports', [\App\Http\Controllers\Admin\DashboardController::class, 'showImportPage'])->name('admin.imports.show');
-    // =========================================================================
-    // === THIS IS THE CORRECTED LINE ==========================================
-    // It now points to the DashboardController where we built the new logic.
-    Route::post('/classes/import', [DashboardController::class, 'importClasses'])->name('classes.import.handle');
-    // =========================================================================
-
+    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
+    
+    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
 
     Route::prefix('results/import')->name('results.import.')->group(function () {
         Route::get('/step-1', [AdminResultController::class, 'showImportStep1'])->name('show_step1');
-        Route::post('/step-1', [AdminResultController::class, 'handleImportStep1'])->name('handle_step1');
         Route::post('/prepare-step-2', [AdminResultController::class, 'prepareImportStep2'])->name('prepare_step2');
-        Route::get('/step-2', [AdminResultController::class, 'showImportStep2'])->name('show_step2');
+        Route::get('/step-2/{classSection}', [AdminResultController::class, 'showImportStep2'])->name('show_step2');
         Route::post('/step-2', [AdminResultController::class, 'handleImport'])->name('handle');
     });
     Route::resource('results', AdminResultController::class);

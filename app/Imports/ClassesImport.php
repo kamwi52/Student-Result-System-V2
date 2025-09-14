@@ -2,13 +2,10 @@
 
 namespace App\Imports;
 
-// --- THIS SECTION IS THE DEFINITIVE FIX FOR THE CRASH ---
 use App\Models\ClassSection;
 use App\Models\AcademicSession;
 use App\Models\GradingSystem;
 use App\Models\Subject;
-// --------------------------------------------------------
-
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -23,7 +20,7 @@ class ClassesImport implements ToModel, WithHeadingRow, WithChunkReading
 
     public function __construct()
     {
-        // Pre-load data from the database for better performance
+        // Pre-load all data once, keyed by name for extreme speed.
         $this->sessions = AcademicSession::all()->keyBy('name');
         $this->gradingSystems = GradingSystem::all()->keyBy('name');
         $this->subjects = Subject::all()->keyBy('name');
@@ -36,24 +33,27 @@ class ClassesImport implements ToModel, WithHeadingRow, WithChunkReading
         $gradingSystemName = trim($row['grading_system']);
         $subjectNames = array_map('trim', explode('|', $row['subjects']));
 
+        // Direct, case-sensitive lookup from our cached collections.
         $session = $this->sessions->get($sessionName);
         $gradingSystem = $this->gradingSystems->get($gradingSystemName);
         
         $foundSubjects = $this->subjects->whereIn('name', $subjectNames);
         $subjectIds = $foundSubjects->pluck('id')->toArray();
 
-        // This validation will now work and write a helpful message in your log file if data mismatches.
+        // =========================================================================
+        // === THE ULTRA-LOUD VALIDATION BLOCK =====================================
+        // =========================================================================
         if (!$session || !$gradingSystem || $foundSubjects->count() !== count($subjectNames)) {
-            Log::warning('Skipping row in class import due to data mismatch.', [
+            // Find the exact subject names that were not found in the database.
+            $notFoundSubjects = implode(', ', array_diff($subjectNames, $foundSubjects->keys()->toArray()));
+
+            Log::warning('CLASS IMPORT FAILURE: Skipping row due to data mismatch.', [
                 'row_data' => $row,
-                'session_name_from_csv' => $sessionName,
-                'session_found_in_db' => $session ? 'YES' : 'NO! MISMATCH!',
-                'grading_system_from_csv' => $gradingSystemName,
-                'grading_system_found_in_db' => $gradingSystem ? 'YES' : 'NO! MISMATCH!',
-                'subjects_found_match' => ($foundSubjects->count() === count($subjectNames)) ? 'YES' : 'NO! MISMATCH!',
-                'subjects_not_found' => implode(', ', array_diff($subjectNames, $foundSubjects->keys()->toArray()))
+                'session_check' => $session ? 'OK' : "FAILED: Could not find Academic Session named '{$sessionName}'",
+                'grading_system_check' => $gradingSystem ? 'OK' : "FAILED: Could not find Grading System named '{$gradingSystemName}'",
+                'subjects_check' => ($foundSubjects->count() === count($subjectNames)) ? 'OK' : "FAILED: Could not find these subjects: [{$notFoundSubjects}]"
             ]);
-            return null; 
+            return null; // Silently skip the row, but leave a loud footprint in the log.
         }
 
         $classSection = null;

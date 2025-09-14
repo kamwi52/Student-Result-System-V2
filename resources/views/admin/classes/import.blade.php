@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg-px-8">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
 
@@ -15,24 +15,28 @@
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                             Please prepare a CSV file with the following columns. The names in the file must exactly match the names in the system.
                         </p>
-                        {{-- --- NEW LOGIC: Updated instructions for the four new columns --- --}}
                         <ul class="mt-2 list-disc list-inside text-sm text-gray-600 dark:text-gray-400">
-                            <li><strong>name</strong>: The name of the class (e.g., 10A).</li>
-                            <li><strong>academic_session</strong>: The exact name of an existing Academic Session (e.g., 2023 Academic Year).</li>
+                            <li><strong>name</strong>: The name of the class (e.g., 12A).</li>
+                            <li><strong>academic_session</strong>: The exact name of an existing Academic Session (e.g., 2025 Academic Year).</li>
                             <li><strong>grading_system</strong>: The exact name of an existing Grading System (e.g., Senior Secondary (Exam)).</li>
                             <li><strong>subjects</strong>: A list of existing subject names separated by a pipe character `|` (e.g., "Mathematics|Science|History").</li>
                         </ul>
                          <div class="mt-4">
                             <a href="{{ route('admin.downloads.classes-template') }}" class="inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-500 hover:underline">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                Download New Template
+                                Download Template
                             </a>
                         </div>
                     </div>
 
+                    {{-- Display any success or error messages from the controller --}}
                     <x-success-message />
                     <x-error-message />
 
+                    {{-- ========================================================================= --}}
+                    {{-- === THIS IS THE DEFINITIVE FIX ========================================== --}}
+                    {{-- The action and enctype are guaranteed to be correct.                   --}}
+                    {{-- ========================================================================= --}}
                     <form action="{{ route('admin.classes.import.handle') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <div>

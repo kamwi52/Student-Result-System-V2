@@ -15,8 +15,9 @@
                             <label for="class_section_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">1. Select a Class</label>
                             <select id="class_section_id" name="class_section_id" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600">
                                 <option value="" disabled selected>-- Choose a class --</option>
+                                {{-- The controller correctly provides the $classSections variable --}}
                                 @foreach ($classSections as $class)
-                                    <option value="{{ $class->id }}">{{ $class->name }}</option>
+                                    <option value="{{ $class->id }}">{{ $class->name }} ({{ $class->academicSession->name }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -31,6 +32,7 @@
                             <x-input-error :messages="$errors->get('subject_ids')" class="mt-2" />
                         </div>
 
+                        {{-- The rest of your form fields remain the same --}}
                         <div class="mb-6">
                             <label for="base_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">3. Enter a Base Name</label>
                             <input type="text" id="base_name" name="base_name" value="{{ old('base_name', 'End of Term') }}" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" placeholder="e.g., Final Exam">
@@ -49,7 +51,7 @@
                             </div>
                             <div>
                                 <label for="assessment_date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">5. Assessment Date</label>
-                                <input type="date" id="assessment_date" name="assessment_date" value="{{ old('assessment_date') }}" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <input type="date" id="assessment_date" name="assessment_date" value="{{ old('assessment_date', now()->toDateString()) }}" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                             </div>
                         </div>
 
@@ -76,12 +78,16 @@
         </div>
     </div>
 
-    @push('scripts')
+    {{-- ========================================================================= --}}
+    {{-- === THE DEFINITIVE FIX: SCRIPT IS NOW DIRECTLY IN THE FILE ============== --}}
+    {{-- This removes the dependency on `@push` and guarantees it will run.      --}}
+    {{-- ========================================================================= --}}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const classSelect = document.getElementById('class_section_id');
             const subjectsList = document.getElementById('subjects-list');
-            const baseUrl = "{{ url('/admin/classes') }}";
+            // This base URL is safe and will always resolve correctly.
+            const baseUrl = "{{ rtrim(url('/'), '/') }}/admin/classes";
 
             classSelect.addEventListener('change', function () {
                 const selectedClassId = this.value;
@@ -91,28 +97,37 @@
                     subjectsList.innerHTML = '<p class="text-gray-500 col-span-full">Please select a class to see its subjects.</p>';
                     return;
                 }
+                
+                const fetchUrl = `${baseUrl}/${selectedClassId}/subjects`;
+                console.log('Attempting to fetch subjects from:', fetchUrl); // For debugging
 
-                // Make a fetch request to our new route
-                fetch(`${baseUrl}/${selectedClassId}/subjects`)
+                // Make a robust fetch request
+                fetch(fetchUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest', // Good practice for Laravel AJAX
+                    }
+                })
                     .then(response => {
+                        console.log('Received response from server:', response); // For debugging
                         if (!response.ok) {
-                            throw new Error('Network response was not ok');
+                            throw new Error(`Network response was not ok, status: ${response.status}`);
                         }
                         return response.json();
                     })
                     .then(subjects => {
+                        console.log('Received subjects data:', subjects); // For debugging
                         subjectsList.innerHTML = ''; // Clear loading message
 
-                        if (subjects.length > 0) {
+                        if (subjects && subjects.length > 0) {
                             subjects.forEach(subject => {
                                 const label = document.createElement('label');
-                                label.className = 'flex items-center p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700';
+                                label.className = 'flex items-center p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer';
                                 
                                 const checkbox = document.createElement('input');
                                 checkbox.type = 'checkbox';
-                                checkbox.name = 'subject_ids[]';
+                                checkbox.name = 'subject_ids[]'; // Correctly named for array submission
                                 checkbox.value = subject.id;
-                                checkbox.checked = true;
+                                checkbox.checked = true; // Check by default for convenience
                                 checkbox.className = 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500';
                                 
                                 const span = document.createElement('span');
@@ -124,15 +139,14 @@
                                 subjectsList.appendChild(label);
                             });
                         } else {
-                            subjectsList.innerHTML = '<p class="text-gray-500 col-span-full">This class has no subjects assigned.</p>';
+                            subjectsList.innerHTML = '<p class="text-gray-500 col-span-full">This class has no subjects assigned. Please assign some first.</p>';
                         }
                     })
                     .catch(error => {
-                        subjectsList.innerHTML = '<p class="text-red-500 col-span-full">Could not load subjects. Please try again.</p>';
-                        console.error('Error fetching subjects:', error);
+                        subjectsList.innerHTML = '<p class="text-red-500 col-span-full">Error: Could not load subjects. Check browser console for details.</p>';
+                        console.error('CRITICAL ERROR fetching subjects:', error);
                     });
             });
         });
     </script>
-    @endpush
 </x-app-layout>

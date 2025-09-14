@@ -92,7 +92,7 @@ class ResultController extends Controller
         return redirect()->route('admin.results.index')->with('success', 'Result deleted successfully.');
     }
 
-    // === START: IMPORT WORKFLOW METHODS ===
+    // === START: IMPORT WORKFLOW METHODS (NOW DEFINITIVELY CORRECTED) ===
 
     /**
      * Show Step 1 of the import process (Class Selection).
@@ -104,8 +104,7 @@ class ResultController extends Controller
     }
 
     /**
-     * === THIS IS THE CORRECTED METHOD ===
-     * Handle submission from Step 1 and prepare data for Step 2.
+     * Handle submission from Step 1 and REDIRECT to Step 2.
      */
     public function prepareImportStep2(Request $request)
     {
@@ -113,13 +112,17 @@ class ResultController extends Controller
             'class_section_id' => 'required|exists:class_sections,id',
         ]);
 
-        $classSection = ClassSection::findOrFail($validated['class_section_id']);
-        
-        // === THE FIX IS HERE ===
-        // The query now correctly filters assessments by the selected class_section_id,
-        // ensuring only relevant assessments for that class are shown.
+        // This is the core of the PRG fix. It redirects to a GET route.
+        return redirect()->route('admin.results.import.show_step2', ['classSection' => $validated['class_section_id']]);
+    }
+    
+    /**
+     * Show Step 2 of the import process. This is the refresh-safe GET method.
+     */
+    public function showImportStep2(ClassSection $classSection): View
+    {
         $assessments = Assessment::where('class_section_id', $classSection->id)
-            ->with('subject') // Eager load subject for display
+            ->with('subject')
             ->orderBy('name')
             ->get();
 
@@ -141,7 +144,7 @@ class ResultController extends Controller
             Excel::import(new ResultsImport($validated['assessment_id']), $request->file('file'));
         } catch (\Exception $e) {
             Log::error('Result Import Failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'An error occurred during import. Please check file format and content. Details: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred during import. Details: ' . $e->getMessage());
         }
 
         return redirect()->route('admin.results.index')->with('success', 'Import successful! Results have been created or updated.');

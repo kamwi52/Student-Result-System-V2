@@ -13,6 +13,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // =========================================================================
+        // === THIS IS THE FINAL FIX ===============================================
+        // This now calls your new seeder in the correct order.
+        // =========================================================================
+        $this->call([
+            AcademicSessionSeeder::class, // CRITICAL: This must be first
+            GradingScaleSeeder::class,
+            TermSeeder::class,
+        ]);
+        
+        // Your default users are created after the core data is in place.
         User::firstOrCreate(
             ['email' => 'east@test.com'],
             ['name' => 'east', 'email_verified_at' => now(), 'role' => 'admin', 'password' => Hash::make('password')]
@@ -25,10 +36,5 @@ class DatabaseSeeder extends Seeder
             ['email' => 'stude@test.com'],
             ['name' => 'student1', 'email_verified_at' => now(), 'role' => 'student', 'password' => Hash::make('password')]
         );
-        
-        $this->call([
-            GradingScaleSeeder::class,
-            TermSeeder::class, // Renamed from AssessmentTypeSeeder
-        ]);
     }
 }

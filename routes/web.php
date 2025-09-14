@@ -82,9 +82,15 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/downloads/users-template', [DashboardController::class, 'downloadUsersTemplate'])->name('downloads.users-template');
     Route::get('/downloads/classes-template', [DashboardController::class, 'downloadClassesTemplate'])->name('downloads.classes-template');
     Route::get('/downloads/subjects-template', [DashboardController::class, 'downloadSubjectsTemplate'])->name('downloads.subjects-template');
-    // === THIS IS THE NEWLY ADDED ROUTE ===
     Route::get('/downloads/results-template', [DashboardController::class, 'downloadResultsTemplate'])->name('downloads.results-template');
-        Route::get('/downloads/user-guide', [DashboardController::class, 'downloadUserGuide'])->name('downloads.user-guide');
+    Route::get('/downloads/user-guide', [DashboardController::class, 'downloadUserGuide'])->name('downloads.user-guide');
+
+    // --- Import Routes ---
+    // Note: We are pointing all import logic to the DashboardController for consistency.
+    Route::post('/imports/users', [DashboardController::class, 'importUsers'])->name('imports.users');
+    Route::post('/imports/classes', [DashboardController::class, 'importClasses'])->name('imports.classes'); // Ensure this is present
+    Route::post('/imports/subjects', [DashboardController::class, 'importSubjects'])->name('imports.subjects'); // Good practice to add this too
+
     Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
     Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
     Route::resource('users', UserController::class);
@@ -96,7 +102,13 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
 
     Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
     Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
-    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
+    Route::get('/imports', [\App\Http\Controllers\Admin\DashboardController::class, 'showImportPage'])->name('admin.imports.show');
+    // =========================================================================
+    // === THIS IS THE CORRECTED LINE ==========================================
+    // It now points to the DashboardController where we built the new logic.
+    Route::post('/classes/import', [DashboardController::class, 'importClasses'])->name('classes.import.handle');
+    // =========================================================================
+
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
 
     Route::prefix('results/import')->name('results.import.')->group(function () {

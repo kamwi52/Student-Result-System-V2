@@ -6,86 +6,91 @@ use App\Models\User;
 use App\Models\ClassSection;
 use App\Models\AcademicSession;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 
-class UsersImport implements ToModel, WithHeadingRow, WithValidation
+class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading
 {
-    /**
-    * @param array $row
-    *
-    * @return \Illuminate\Database\Eloquent\Model|null
-    */
+    private $sessions;
+
+    public function __construct()
+    {
+        $this->sessions = AcademicSession::all()->keyBy('name');
+    }
+
     public function model(array $row)
     {
-        // === THIS IS THE FIX: Clean the incoming data ===
-        // 1. Trim leading/trailing whitespace and collapse multiple spaces within the name into a single space.
-        $cleanedName = preg_replace('/\s+/', ' ', trim($row['name']));
-        // 2. Trim any whitespace from the email.
-        $cleanedEmail = trim($row['email']);
-        // === END FIX ===
-
-        // Find or create the user based on their CLEANED email
+        // Step 1: Create or Update the User
         $user = User::updateOrCreate(
-            ['email' => $cleanedEmail],
+            ['email' => $row['email']],
             [
-                'name'     => $cleanedName, // Use the cleaned name
+                'name'     => $row['name'],
                 'password' => Hash::make($row['password']),
                 'role'     => strtolower($row['role']),
             ]
         );
 
-        // --- AUTO-ENROLLMENT LOGIC ---
-        if (strtolower($row['role']) === 'student' && !empty($row['class_name']) && !empty($row['academic_session_name'])) {
-            $academicSession = AcademicSession::where('name', $row['academic_session_name'])->first();
+        // Step 2: Handle Enrollment
+        if ($user->role === 'student' && !empty($row['class_name']) && !empty($row['academic_session_name'])) {
             
-            if ($academicSession) {
-                $classSection = ClassSection::where('name', $row['class_name'])
-                                            ->where('academic_session_id', $academicSession->id)
-                                            ->first();
-                
-                if ($classSection) {
-                    $classSection->students()->syncWithoutDetaching($user->id);
-                }
+            $className = trim($row['class_name']);
+            $sessionName = trim($row['academic_session_name']);
+            
+            $session = $this->sessions->get($sessionName);
+
+            if (!$session) {
+                Log::warning('ENROLLMENT FAILED: The Academic Session from the CSV does not exist.', [
+                    'student_email' => $user->email,
+                    'session_name_from_csv' => $sessionName,
+                ]);
+                return $user;
+            }
+
+            $classSection = ClassSection::where('name', $className)
+                ->where('academic_session_id', $session->id)
+                ->first();
+
+            if ($classSection) {
+                // =========================================================================
+                // === THIS IS THE FINAL FIX: Corrected `student_id` to `user_id` ==========
+                // This aligns the code with your actual database schema and fixes the crash.
+                // =========================================================================
+                $user->enrollments()->updateOrCreate(
+                    [
+                        'class_section_id' => $classSection->id,
+                        'user_id' => $user->id, // THIS WAS THE BUG. IT IS NOW FIXED.
+                    ],
+                    [] 
+                );
+            } else {
+                Log::warning('ENROLLMENT FAILED: The Class Name was not found within the specified Academic Session.', [
+                    'student_email' => $user->email,
+                    'class_name_from_csv' => $className,
+                    'session_name_from_csv' => $sessionName,
+                ]);
             }
         }
-        
+
         return $user;
     }
 
-    /**
-     * Define the validation rules for each row.
-     */
     public function rules(): array
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'password' => 'required',
-            'role' => ['required', Rule::in(['admin', 'teacher', 'student'])],
-            'academic_session_name' => [
-                'nullable',
-                'required_with:class_name',
-                Rule::exists('academic_sessions', 'name'),
-            ],
-            'class_name' => [
-                'nullable',
-                Rule::exists('class_sections', 'name'),
-            ],
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|min:8',
+            'role' => 'required|string|in:admin,teacher,student',
+            'academic_session_name' => 'nullable|string',
+            'class_name' => 'nullable|string',
         ];
     }
-
-    /**
-     * Custom validation messages.
-     */
-    public function customValidationMessages()
+    
+    public function chunkSize(): int
     {
-        return [
-            'academic_session_name.exists' => 'The specified Academic Session does not exist in the database.',
-            'class_name.exists' => 'The specified Class Name does not exist in the database.',
-            'academic_session_name.required_with' => 'The Academic Session is required when enrolling a student in a class.',
-        ];
+        return 100;
     }
 }

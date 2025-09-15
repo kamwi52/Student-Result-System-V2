@@ -77,18 +77,35 @@ Route::middleware('auth')->group(function () {
 // =========================================================================
 Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    // Dashboard & Core Pages
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/imports', [DashboardController::class, 'showImportPage'])->name('imports.show');
-
+    
     // Template Downloads
     Route::get('/downloads/users-template', [DashboardController::class, 'downloadUsersTemplate'])->name('downloads.users-template');
     Route::get('/downloads/classes-template', [DashboardController::class, 'downloadClassesTemplate'])->name('downloads.classes-template');
     Route::get('/downloads/subjects-template', [DashboardController::class, 'downloadSubjectsTemplate'])->name('downloads.subjects-template');
     Route::get('/downloads/results-template', [DashboardController::class, 'downloadResultsTemplate'])->name('downloads.results-template');
     Route::get('/downloads/user-guide', [DashboardController::class, 'downloadUserGuide'])->name('downloads.user-guide');
+    
+    // =========================================================================
+    // === THE DEFINITIVE FIX: CUSTOM ROUTES ARE NOW DEFINED BEFORE RESOURCE ROUTES
+    // =========================================================================
+    
+    // Custom User Routes
+    Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
+    Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
+    Route::delete('users/bulk/destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
+    
+    // Custom Class Routes
+    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
+    Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
+    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
 
-    // Resourceful CRUD Controllers
+    // Custom Subject Routes
+    Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
+    Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
+
+    // Resourceful CRUD Controllers (Defined AFTER custom routes to prevent conflicts)
     Route::resource('users', UserController::class);
     Route::resource('subjects', SubjectController::class);
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
@@ -98,15 +115,7 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::resource('academic-sessions', AcademicSessionController::class);
     Route::resource('terms', TermController::class);
 
-    // Custom Import Routes (Handled by their respective controllers)
-    Route::post('/users/import', [UserController::class, 'handleImport'])->name('users.import.handle');
-    Route::get('/users/import', [UserController::class, 'showImportForm'])->name('users.import.show');
-    Route::post('/classes/import', [ClassSectionController::class, 'handleImport'])->name('classes.import.handle');
-    Route::get('/classes/import', [ClassSectionController::class, 'showImportForm'])->name('classes.import.show');
-    Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
-    Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
-    
-    // Results Import Workflow (Multi-step)
+    // Results Import Workflow
     Route::prefix('results/import')->name('results.import.')->group(function () {
         Route::get('/step-1', [AdminResultController::class, 'showImportStep1'])->name('show_step1');
         Route::post('/prepare-step-2', [AdminResultController::class, 'prepareImportStep2'])->name('prepare_step2');
@@ -114,23 +123,22 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
         Route::post('/step-2', [AdminResultController::class, 'handleImport'])->name('handle');
     });
 
-    // Final Reports Workflow (with Print View)
+    // Final Reports Workflow
     Route::prefix('final-reports')->name('final-reports.')->group(function() {
         Route::get('/', [FinalReportController::class, 'index'])->name('index');
         Route::get('/show-students', [FinalReportController::class, 'showStudents'])->name('show-students');
         Route::post('/generate', [FinalReportController::class, 'generate'])->name('generate');
         Route::get('/generate-single/{student_id}/{class_id}/{term_id}', [FinalReportController::class, 'generateSingle'])->name('generate-single');
-        // This is the definitive, correct Print View route
         Route::get('/print/{filename}', [FinalReportController::class, 'printReport'])->name('print')->where('filename', '(.*)');
     });
 
     // Other Custom Functionality Routes
-    Route::get('/classes/{classSection}/subjects', [ClassSectionController::class, 'getSubjectsJson'])->name('classes.subjects.json');
-    Route::delete('users/bulk/destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
     Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
     Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
+    Route::match(['get', 'post'], '/enrollments/bulk-manage', [EnrollmentController::class, 'showBulkManageForm'])->name('enrollments.bulk-manage.show');
+    Route::post('/enrollments/bulk-save', [EnrollmentController::class, 'handleBulkManage'])->name('enrollments.bulk-manage.handle');
 });
 
 // =========================================================================

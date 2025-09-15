@@ -7,6 +7,7 @@ use App\Jobs\GenerateRankedReportJob;
 use App\Models\Term;
 use App\Models\ClassSection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage; // This is required for the new print method
 
 class FinalReportController extends Controller
 {
@@ -56,7 +57,6 @@ class FinalReportController extends Controller
             auth()->user()
         );
         
-        // === FIX: Return JSON for JavaScript requests, otherwise redirect ===
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Your ranked report cards are being generated! You will be notified when they are ready.']);
         }
@@ -77,12 +77,44 @@ class FinalReportController extends Controller
             auth()->user()
         );
 
-        // === FIX: Return JSON for JavaScript requests, otherwise redirect ===
         if ($request->wantsJson()) {
             return response()->json(['message' => 'The report is being generated! You will be notified when it is ready.']);
         }
 
         return redirect()->route('admin.final-reports.show-students', ['class_id' => $class_id, 'term_id' => $term_id])
             ->with('success', 'The report is being generated! You will be notified when it is ready.');
+    }
+
+    // =========================================================================
+    // === THE NEW PRINT VIEW METHOD ===========================================
+    // This method securely serves the generated PDF to be viewed in the browser.
+    // =========================================================================
+    /**
+     * Finds and displays a generated report PDF inline in the browser.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $filename
+     * @return \Illuminate\Http\Response
+     */
+    public function printReport(Request $request, $filename)
+    {
+        // Basic security check to prevent directory traversal attacks
+        if (str_contains($filename, '..')) {
+            abort(403, 'Invalid filename.');
+        }
+        
+        // Check if the file exists in our private storage disk.
+        if (!Storage::disk('private')->exists($filename)) {
+            abort(404, 'Report file not found. It may have expired or failed to generate.');
+        }
+
+        // Get the raw content of the PDF file.
+        $fileContent = Storage::disk('private')->get($filename);
+
+        // Return the file with the correct headers to instruct the browser
+        // to display it inline instead of downloading it.
+        return response($fileContent, 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="report_card.pdf"');
     }
 }

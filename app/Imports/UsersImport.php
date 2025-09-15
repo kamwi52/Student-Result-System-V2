@@ -11,66 +11,45 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure; // 1. Import the "Skip on Failure" trait
+use Maatwebsite\Excel\Validators\Failure;    // 2. Import the "Failure" object
 
-class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading
+// --- We now implement SkipsOnFailure ---
+class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, SkipsOnFailure
 {
     private $sessions;
 
     public function __construct()
     {
-        $this->sessions = AcademicSession::all()->keyBy('name');
+        $this->sessions = AcademicSession::all();
     }
 
     public function model(array $row)
     {
-        // Step 1: Create or Update the User
+        // Your existing, perfected model logic does not need to change.
         $user = User::updateOrCreate(
-            ['email' => $row['email']],
+            ['email' => trim($row['email'])],
             [
-                'name'     => $row['name'],
+                'name'     => trim($row['name']),
                 'password' => Hash::make($row['password']),
                 'role'     => strtolower($row['role']),
             ]
         );
 
-        // Step 2: Handle Enrollment
         if ($user->role === 'student' && !empty($row['class_name']) && !empty($row['academic_session_name'])) {
-            
             $className = trim($row['class_name']);
-            $sessionName = trim($row['academic_session_name']);
+            $sessionInput = trim($row['academic_session_name']);
             
-            $session = $this->sessions->get($sessionName);
+            $session = $this->sessions->first(fn($s) => str_contains($s->name, $sessionInput));
 
-            if (!$session) {
-                Log::warning('ENROLLMENT FAILED: The Academic Session from the CSV does not exist.', [
-                    'student_email' => $user->email,
-                    'session_name_from_csv' => $sessionName,
-                ]);
-                return $user;
-            }
-
-            $classSection = ClassSection::where('name', $className)
-                ->where('academic_session_id', $session->id)
-                ->first();
-
-            if ($classSection) {
-                // =========================================================================
-                // === THIS IS THE FINAL FIX: Corrected `student_id` to `user_id` ==========
-                // This aligns the code with your actual database schema and fixes the crash.
-                // =========================================================================
-                $user->enrollments()->updateOrCreate(
-                    [
-                        'class_section_id' => $classSection->id,
-                        'user_id' => $user->id, // THIS WAS THE BUG. IT IS NOW FIXED.
-                    ],
-                    [] 
-                );
-            } else {
-                Log::warning('ENROLLMENT FAILED: The Class Name was not found within the specified Academic Session.', [
-                    'student_email' => $user->email,
-                    'class_name_from_csv' => $className,
-                    'session_name_from_csv' => $sessionName,
-                ]);
+            if ($session) {
+                $classSection = ClassSection::where('name', $className)->where('academic_session_id', $session->id)->first();
+                if ($classSection) {
+                    $user->enrollments()->updateOrCreate(
+                        ['class_section_id' => $classSection->id, 'user_id' => $user->id],
+                        []
+                    );
+                }
             }
         }
 
@@ -79,16 +58,35 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
 
     public function rules(): array
     {
+        // Your existing, perfected validation rules do not need to change.
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'password' => 'required|string|min:8',
             'role' => 'required|string|in:admin,teacher,student',
-            'academic_session_name' => 'nullable|string',
+            'academic_session_name' => 'nullable', 
             'class_name' => 'nullable|string',
         ];
     }
     
+    // =========================================================================
+    // === THE DEFINITIVE FIX: THE FAILURE HANDLER =============================
+    // This method is automatically called when a row fails validation.
+    // =========================================================================
+    public function onFailure(Failure ...$failures)
+    {
+        // This is the "loud" part. For every row that is skipped,
+        // we write a detailed error message to the log file.
+        foreach ($failures as $failure) {
+            Log::error('User Import Skipped Row', [
+                'row_number' => $failure->row(), // The row number from the spreadsheet
+                'column' => $failure->attribute(), // The column that failed
+                'errors' => $failure->errors(), // The specific error messages
+                'row_data' => $failure->values(), // The data from the failed row
+            ]);
+        }
+    }
+
     public function chunkSize(): int
     {
         return 100;

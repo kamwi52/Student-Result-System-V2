@@ -124,6 +124,10 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
         Route::post('/prepare-step-2', [AdminResultController::class, 'prepareImportStep2'])->name('prepare_step2');
         Route::get('/step-2/{classSection}', [AdminResultController::class, 'showImportStep2'])->name('show_step2');
         Route::post('/step-2', [AdminResultController::class, 'handleImport'])->name('handle');
+       Route::get('/final-reports/print/{filename}', [FinalReportController::class, 'printReport'])
+        ->name('final-reports.print')
+        ->where('filename', '(.*)');
+    
     });
     Route::resource('results', AdminResultController::class);
 

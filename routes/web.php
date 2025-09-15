@@ -162,3 +162,4 @@ Route::middleware(['auth', 'is.student'])->prefix('student')->name('student.')->
     Route::get('/classes/{classSection}/results', [StudentDashboardController::class, 'showResults'])->name('class.results');
     Route::get('/my-report', [ReportCardController::class, 'generateForStudent'])->name('my.report');
 });
+#news

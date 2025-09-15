@@ -2,39 +2,22 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // =========================================================================
-        // === THIS IS THE FINAL FIX ===============================================
-        // This now calls your new seeder in the correct order.
-        // =========================================================================
         $this->call([
-            AcademicSessionSeeder::class, // CRITICAL: This must be first
-            GradingScaleSeeder::class,
+            // Foundational data must come first
+            AcademicSessionSeeder::class,
             TermSeeder::class,
+            GradingScaleSeeder::class,
+            SubjectSeeder::class, // The full curriculum
+            
+            // Dependent data comes next
+            ClassSectionSeeder::class, // Creates classes and assigns subjects
+            UserSeeder::class, // Creates users and enrolls them
         ]);
-        
-        // Your default users are created after the core data is in place.
-        User::firstOrCreate(
-            ['email' => 'east@test.com'],
-            ['name' => 'east', 'email_verified_at' => now(), 'role' => 'admin', 'password' => Hash::make('password')]
-        );
-        User::firstOrCreate(
-            ['email' => 'teach1@test.com'],
-            ['name' => 'teach1', 'email_verified_at' => now(), 'role' => 'teacher', 'password' => Hash::make('password')]
-        );
-        User::firstOrCreate(
-            ['email' => 'stude@test.com'],
-            ['name' => 'student1', 'email_verified_at' => now(), 'role' => 'student', 'password' => Hash::make('password')]
-        );
     }
 }

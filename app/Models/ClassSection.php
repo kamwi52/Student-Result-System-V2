@@ -8,8 +8,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-// --- ADD THIS LINE. It's needed for the new relationship. ---
+// =========================================================================
+// === THE DEFINITIVE FIX: ALL REQUIRED MODELS ARE NOW IMPORTED ============
+// This prevents future "Class not found" errors.
+// =========================================================================
 use App\Models\Enrollment;
+use App\Models\User;
+use App\Models\Subject;
+use App\Models\Assignment;
+use App\Models\ClassSubject;
 
 class ClassSection extends Model
 {
@@ -56,17 +63,16 @@ class ClassSection extends Model
         return $this->belongsTo(GradingScale::class);
     }
     
-    // =========================================================================
-    // === THE DEFINITIVE FIX: THE MISSING RELATIONSHIP IS NOW HERE ============
-    // This provides the direct bridge to the enrollment records.
-    // =========================================================================
+    /**
+     * The relationship bridge that was missing. It is now correct.
+     */
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
     }
 
     /**
-     * This method gets all unique teachers assigned to this class's subjects.
+     * This is your existing helper method. It is correct.
      */
     public function getSubjectTeachersAttribute()
     {

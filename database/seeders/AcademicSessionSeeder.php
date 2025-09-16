@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\AcademicSession; // Your import is correct
+use App\Models\AcademicSession;
 
 class AcademicSessionSeeder extends Seeder
 {
@@ -13,27 +12,25 @@ class AcademicSessionSeeder extends Seeder
      */
     public function run(): void
     {
-        // This session is created but marked as not active.
+        // =========================================================================
+        // === THE DEFINITIVE FIX ================================================
+        // This seeder now creates only ONE session and ensures it is active.
+        // It first sets all other sessions to inactive to guarantee only one is active.
+        // =========================================================================
+
+        // Step 1: Deactivate all existing academic sessions to prevent conflicts.
+        AcademicSession::query()->update(['is_active' => false]);
+
+        // Step 2: Create or update the '2025 Academic Year' and set it as the only active session.
         AcademicSession::updateOrCreate(
-            ['name' => '2024-2025 Academic Year'],
+            ['name' => '2025 Academic Year'], // The unique name to find or create
             [
-                'start_date' => '2024-09-01',
-                'end_date'   => '2025-06-30',
-                'is_active'  => false, 
+                'start_date' => '2025-01-01',
+                'end_date'   => '2025-12-31',
+                'is_active'  => true, // This is the critical part
             ]
         );
 
-        // =========================================================================
-        // === THE DEFINITIVE IMPROVEMENT ========================================
-        // We are now explicitly setting this session as the active one.
-        // =========================================================================
-        AcademicSession::updateOrCreate(
-            ['name' => '2025 Academic Year'], // Use the exact name from your CSVs
-            [
-                'start_date' => '2025-09-01',
-                'end_date'   => '2026-06-30',
-                'is_active'  => true, // This is the critical addition
-            ]
-        );
+        $this->command->info('Academic session "2025 Academic Year" has been created and set as active.');
     }
 }

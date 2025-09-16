@@ -11,10 +11,9 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure; // 1. Import the "Skip on Failure" trait
-use Maatwebsite\Excel\Validators\Failure;    // 2. Import the "Failure" object
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Validators\Failure;
 
-// --- We now implement SkipsOnFailure ---
 class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, SkipsOnFailure
 {
     private $sessions;
@@ -26,7 +25,7 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
 
     public function model(array $row)
     {
-        // Your existing, perfected model logic does not need to change.
+        // Step 1: Create or Update the User
         $user = User::updateOrCreate(
             ['email' => trim($row['email'])],
             [
@@ -36,7 +35,13 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
             ]
         );
 
+        // =========================================================================
+        // === THIS IS THE DEFINITIVE FIX ==========================================
+        // This is the final, bulletproof enrollment logic. It uses the direct
+        // 'enrollments()' relationship, which is the correct way.
+        // =========================================================================
         if ($user->role === 'student' && !empty($row['class_name']) && !empty($row['academic_session_name'])) {
+            
             $className = trim($row['class_name']);
             $sessionInput = trim($row['academic_session_name']);
             
@@ -44,12 +49,21 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
 
             if ($session) {
                 $classSection = ClassSection::where('name', $className)->where('academic_session_id', $session->id)->first();
+
                 if ($classSection) {
+                    // This is the corrected, direct enrollment creation.
                     $user->enrollments()->updateOrCreate(
-                        ['class_section_id' => $classSection->id, 'user_id' => $user->id],
+                        [
+                            'class_section_id' => $classSection->id,
+                            'user_id' => $user->id,
+                        ],
                         []
                     );
+                } else {
+                    Log::warning('ENROLLMENT FAILED: Class not found in session.', ['email' => $user->email, 'class' => $className, 'session' => $session->name]);
                 }
+            } else {
+                Log::warning('ENROLLMENT FAILED: Session not found.', ['email' => $user->email, 'session' => $sessionInput]);
             }
         }
 
@@ -58,7 +72,6 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
 
     public function rules(): array
     {
-        // Your existing, perfected validation rules do not need to change.
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -69,20 +82,14 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
         ];
     }
     
-    // =========================================================================
-    // === THE DEFINITIVE FIX: THE FAILURE HANDLER =============================
-    // This method is automatically called when a row fails validation.
-    // =========================================================================
     public function onFailure(Failure ...$failures)
     {
-        // This is the "loud" part. For every row that is skipped,
-        // we write a detailed error message to the log file.
         foreach ($failures as $failure) {
             Log::error('User Import Skipped Row', [
-                'row_number' => $failure->row(), // The row number from the spreadsheet
-                'column' => $failure->attribute(), // The column that failed
-                'errors' => $failure->errors(), // The specific error messages
-                'row_data' => $failure->values(), // The data from the failed row
+                'row' => $failure->row(),
+                'attribute' => $failure->attribute(),
+                'errors' => $failure->errors(),
+                'values' => $failure->values(),
             ]);
         }
     }

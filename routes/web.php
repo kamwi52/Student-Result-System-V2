@@ -63,7 +63,7 @@ Route::middleware('auth')->group(function () {
         return redirect()->back();
     })->name('notifications.show');
 
-    // Secure File Download Route (Legacy - Kept for compatibility)
+    // Secure File Download Route
     Route::get('/reports/download-generated-file', function(Request $request) {
         if (!$request->hasValidSignature()) { abort(401, 'Invalid or expired download link.'); }
         $filePath = $request->query('filename');
@@ -88,7 +88,7 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::get('/downloads/user-guide', [DashboardController::class, 'downloadUserGuide'])->name('downloads.user-guide');
     
     // =========================================================================
-    // === THE DEFINITIVE FIX: CUSTOM ROUTES ARE NOW DEFINED BEFORE RESOURCE ROUTES
+    // === THE DEFINITIVE FIX: CUSTOM ROUTES ARE DEFINED BEFORE RESOURCE ROUTES
     // =========================================================================
     
     // Custom User Routes
@@ -105,6 +105,10 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::post('/subjects/import', [SubjectController::class, 'handleImport'])->name('subjects.import.handle');
     Route::get('/subjects/import', [SubjectController::class, 'showImportForm'])->name('subjects.import.show');
 
+    // Custom Assessment Routes (Defined before the resource route)
+    Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
+    Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
+    
     // Resourceful CRUD Controllers (Defined AFTER custom routes to prevent conflicts)
     Route::resource('users', UserController::class);
     Route::resource('subjects', SubjectController::class);
@@ -133,8 +137,6 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     });
 
     // Other Custom Functionality Routes
-    Route::get('assessments/bulk-create', [AssessmentController::class, 'showBulkCreateForm'])->name('assessments.bulk-create.show');
-    Route::post('assessments/bulk-create', [AssessmentController::class, 'handleBulkCreate'])->name('assessments.bulk-create.handle');
     Route::get('classes/{classSection}/enroll', [EnrollmentController::class, 'index'])->name('classes.enroll.index');
     Route::post('classes/{classSection}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll.store');
     Route::match(['get', 'post'], '/enrollments/bulk-manage', [EnrollmentController::class, 'showBulkManageForm'])->name('enrollments.bulk-manage.show');
@@ -162,4 +164,3 @@ Route::middleware(['auth', 'is.student'])->prefix('student')->name('student.')->
     Route::get('/classes/{classSection}/results', [StudentDashboardController::class, 'showResults'])->name('class.results');
     Route::get('/my-report', [ReportCardController::class, 'generateForStudent'])->name('my.report');
 });
-#news

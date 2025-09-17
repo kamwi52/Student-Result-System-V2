@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\AcademicSession;
 use App\Models\ClassSection;
-use App\Models\GradingScale; // THIS IS THE DEFINITIVE FIX
+use App\Models\GradingScale;
 use App\Models\Subject;
 
 class ClassSectionSeeder extends Seeder
@@ -16,23 +16,26 @@ class ClassSectionSeeder extends Seeder
      */
     public function run(): void
     {
-        // First, we need to get the foundational data.
         $session = AcademicSession::where('name', '2025 Academic Year')->first();
-        // --- THE FIX ---
         $gradingScale = GradingScale::where('name', 'Senior Secondary (Exam)')->first();
-        $juniorGradingScale = GradingScale::where('name', 'Junior Secondary (Formative)')->first() ?? $gradingScale; // Fallback
+        $juniorGradingScale = GradingScale::where('name', 'Junior Secondary (Formative)')->first() ?? $gradingScale;
 
         if (!$session || !$gradingScale) {
             $this->command->error('Could not find the required Academic Session or Grading Scale. Please run their seeders first.');
             return;
         }
 
+        // =========================================================================
+        // === THE DEFINITIVE FIX: NEW CLASSES AND SUBJECTS HAVE BEEN ADDED =======
+        // =========================================================================
         $classesAndSubjects = [
             'F1TS' => ['Mathematics', 'Information and Communication Technology', 'Civic Education', 'English', 'Chemistry', 'Physics', 'DESIGN AND TECHNOLOGY'],
             '9A' => ['Social Studies', 'Religious Education', 'Business Studies', 'Computer Studies', 'Intergrated Science', 'English', 'Chitonga', 'Mathematics'],
             '9B' => ['Mathematics', 'Religious Education', 'Computer Studies', 'Home Economics', 'Intergrated Science', 'English', 'Business Studies', 'Social Studies'],
+            '9C' => ['Computer Studies', 'Intergrated Science', 'Religious Education', 'English', 'Business Studies', 'Design and Technology', 'Mathematics', 'Social Studies'], // <-- NEWLY ADDED
             '9D' => ['Mathematics', 'English', 'Computer Studies', 'Music', 'Social Studies', 'Art and Design', 'Business Studies', 'Intergrated Science', 'Religious Education'],
             '10A' => ['Mathematics', 'English', 'Chemistry (Pure)', 'Religious Education', 'Physics (Pure)', 'Biology', 'Additional Mathematics', 'Civic Education'],
+            '10B' => ['Physics', 'Commerce', 'Principles of Accounts', 'Civic Education', 'English', 'Geography', 'Chemistry', 'Biology', 'Mathematics'], // <-- NEWLY ADDED
             '10C' => ['English', 'Physics', 'Religious Education', 'History', 'Civic Education', 'Mathematics', 'Chemistry', 'Biology', 'Design and Technology'],
             '10D' => ['Design and Technology', 'Mathematics', 'Geography', 'Physics', 'Biology', 'Civic Education', 'Literature in English', 'Chemistry', 'English', 'Chitonga'],
             '10E' => ['Civic Education', 'Mathematics', 'English', 'Biology', 'Religious Education', 'Food and Nutrition', 'Geography', 'Physics', 'Chemistry'],

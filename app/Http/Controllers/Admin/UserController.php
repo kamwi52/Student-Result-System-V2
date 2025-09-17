@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessUserImportJob;
 use App\Models\User;
+use App\Models\ClassSection; // <-- 1. Import the ClassSection model
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -13,42 +14,45 @@ use Illuminate\View\View;
 class UserController extends Controller
 {
     /**
-     * === THIS IS THE UPDATED METHOD ===
-     * Display a listing of the resource, with search, filter, and dynamic pagination.
+     * Display a listing of the resource, now with class filtering.
      */
     public function index(Request $request): View
     {
-        // Define the valid options for the "per page" selector
         $perPageOptions = [10, 25, 50, 100];
-        
-        // Get the 'per_page' value from the request, default to 10.
-        // Also, validate that the requested value is one of our allowed options.
-        $perPage = $request->input('per_page', 10);
-        if (!in_array($perPage, $perPageOptions)) {
-            $perPage = 10;
-        }
+        $perPage = in_array($request->input('per_page', 10), $perPageOptions) ? $request->input('per_page', 10) : 10;
 
         $query = User::query();
 
-        // Filter by search term
+        // Search by name or email
         if ($request->filled('search')) {
             $searchTerm = $request->input('search');
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('email', 'LIKE', "%{$searchTerm}%");
-            });
+            $query->where(fn($q) => $q->where('name', 'LIKE', "%{$searchTerm}%")->orWhere('email', 'LIKE', "%{$searchTerm}%"));
         }
 
-        // Filter by role (case-insensitive)
+        // Filter by role
         if ($request->filled('role')) {
             $query->whereRaw('LOWER(role) = ?', [strtolower($request->input('role'))]);
         }
 
-        // Use the dynamic $perPage variable for pagination
+        // =========================================================================
+        // === THE DEFINITIVE FIX: ADDED CLASS FILTERING LOGIC =====================
+        // =========================================================================
+        if ($request->filled('class_section_id')) {
+            $classId = $request->input('class_section_id');
+            // This powerful query joins the users table with the enrollments table
+            // and filters for users who have an enrollment record for the selected class.
+            $query->whereHas('enrollments', function ($q) use ($classId) {
+                $q->where('class_section_id', $classId);
+            });
+        }
+        
+        // --- 2. Fetch all classes to populate the filter dropdown ---
+        $classes = ClassSection::with('academicSession')->orderBy('name')->get();
+        
         $users = $query->latest()->paginate($perPage);
 
-        // Pass the users and the current perPage value to the view
-        return view('admin.users.index', compact('users', 'perPage', 'perPageOptions'));
+        // --- 3. Pass the new $classes variable to the view ---
+        return view('admin.users.index', compact('users', 'perPage', 'perPageOptions', 'classes'));
     }
 
     // ... all other methods (create, store, edit, etc.) remain exactly the same ...
@@ -109,7 +113,6 @@ class UserController extends Controller
         if ($user->id === 1 || $user->id === auth()->id()) {
             return back()->with('error', 'You cannot delete the super admin or yourself.');
         }
-
         $user->delete();
         return to_route('admin.users.index')->with('success', 'User deleted successfully.');
     }
@@ -129,29 +132,13 @@ class UserController extends Controller
 
     public function bulkDestroy(Request $request)
     {
-        $request->validate([
-            'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,id',
-        ]);
-
-        $idsToDelete = $request->input('user_ids');
-
-        $filteredIds = collect($idsToDelete)->reject(function ($id) {
-            return $id == 1 || $id == auth()->id();
-        })->toArray();
-        
-        $deletedCount = count($filteredIds);
-        $skippedCount = count($idsToDelete) - $deletedCount;
-
-        if ($deletedCount > 0) {
-            User::destroy($filteredIds);
-        }
-
+        $request->validate(['user_ids' => 'required|array', 'user_ids.*' => 'exists:users,id']);
+        $idsToDelete = collect($request->input('user_ids'))->reject(fn($id) => $id == 1 || $id == auth()->id())->toArray();
+        $deletedCount = count($idsToDelete);
+        $skippedCount = count($request->input('user_ids')) - $deletedCount;
+        if ($deletedCount > 0) { User::destroy($idsToDelete); }
         $message = "{$deletedCount} user(s) deleted successfully.";
-        if ($skippedCount > 0) {
-            $message .= " {$skippedCount} protected user(s) were not deleted.";
-        }
-
+        if ($skippedCount > 0) { $message .= " {$skippedCount} protected user(s) were not deleted."; }
         return back()->with('success', $message);
     }
 }

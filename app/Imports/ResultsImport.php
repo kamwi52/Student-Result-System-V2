@@ -7,13 +7,16 @@ use App\Models\User;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure; // 1. Import the "Skip on Failure" trait
-use Maatwebsite\Excel\Validators\Failure;    // 2. Import the "Failure" object
-use Illuminate\Support\Facades\Log;           // 3. Import the Log facade
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Validators\Failure;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
 
-// --- We now implement SkipsOnFailure ---
 class ResultsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
 {
+    use Importable, SkipsFailures;
+
     protected int $assessmentId;
 
     public function __construct(int $assessmentId)
@@ -24,10 +27,9 @@ class ResultsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
     public function model(array $row)
     {
         $student = User::where('email', $row['student_email'])->where('role', 'student')->first();
-
-        // This safeguard is still good practice.
+        
         if (!$student) {
-            return null;
+            return null; // This will be caught by the validation rules.
         }
 
         return Result::updateOrCreate(
@@ -44,7 +46,6 @@ class ResultsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
     public function rules(): array
     {
-        // The validation rules remain strict and correct.
         return [
             'student_email' => 'required|email|exists:users,email',
             'score' => 'required|numeric|min:0',
@@ -52,20 +53,22 @@ class ResultsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
         ];
     }
 
-    // =========================================================================
-    // === THE DEFINITIVE FIX: THE FAILURE HANDLER =============================
-    // This method is automatically called when a row fails validation.
-    // =========================================================================
+    /**
+     * This method is automatically called when a row fails validation.
+     */
     public function onFailure(Failure ...$failures)
     {
-        // For every row that is skipped, we write a detailed error to the log file.
+        // This is the key. We are now storing the failures in the class itself
+        // so the controller can access them after the import is complete.
+        $this->failures()->add(...$failures);
+
+        // We also log the error for the developer's records.
         foreach ($failures as $failure) {
             Log::error('Result Import Skipped Row', [
-                'row_number' => $failure->row(),
-                'column' => $failure->attribute(),
+                'row' => $failure->row(),
                 'errors' => $failure->errors(),
-                'row_data' => $failure->values(),
+                'values' => $failure->values(),
             ]);
         }
     }
-}.
+}

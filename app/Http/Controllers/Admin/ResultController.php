@@ -28,6 +28,22 @@ class ResultController extends Controller
     }
 
     /**
+     * Display a ranked listing of results.
+     */
+    public function ranked(): View
+    {
+        $results = Result::with(['student'])
+            ->select('user_id', DB::raw('AVG(score) as average_score'))
+            ->groupBy('user_id')
+            ->orderByDesc('average_score')
+            ->paginate(20);
+
+        $results->load('student');
+
+        return view('admin.results.ranked', compact('results'));
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create(): View

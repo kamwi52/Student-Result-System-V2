@@ -113,6 +113,7 @@ Route::middleware(['auth', 'is.admin'])->prefix('admin')->name('admin.')->group(
     Route::resource('users', UserController::class);
     Route::resource('subjects', SubjectController::class);
     Route::resource('classes', ClassSectionController::class)->parameters(['classes' => 'classSection']);
+        Route::get('results/ranked', [AdminResultController::class, 'ranked'])->name('results.ranked');
     Route::resource('results', AdminResultController::class);
     Route::resource('assessments', AssessmentController::class);
     Route::resource('grading-scales', GradingScaleController::class);
